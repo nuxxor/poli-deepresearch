@@ -34,6 +34,7 @@ import { calibrateForecast } from "./calibration.js";
 import { fetchMarketContextByConditionId, fetchMarketContextBySlug } from "./polymarket.js";
 import { buildCrossMarketContext } from "./cross-market.js";
 import { buildEvidenceGraphArtifacts } from "./evidence-graph.js";
+import { deriveDecisiveEvidenceStatus, reconcileOpinionAgainstEvidence } from "./evidence-semantics.js";
 import { rankAndFilterCitations } from "./citation-ranking.js";
 import { tryResolveDirectOfficialMarket } from "./direct-resolver.js";
 import { extractEvidenceDocs } from "./extract.js";
@@ -48,7 +49,7 @@ import { extractOfficialDomainsForMarket } from "./official-sources.js";
 import { resolveAppliedPolicy } from "./policies.js";
 import { applyForecastToOpinion, buildProbabilisticForecast } from "./probabilistic-forecast.js";
 import { buildResearchCacheKey, readResearchCache, writeResearchCache } from "./research-cache.js";
-import { deriveDecisiveEvidenceStatus, withResearchPresentation } from "./research-projection.js";
+import { withResearchPresentation } from "./research-projection.js";
 import { createResearchRunMeta, saveResearchRun } from "./research-runs.js";
 import { buildOpinionPrompt, buildSearchQueryPlan } from "./queries.js";
 import { runParallelChat } from "./providers/parallel.js";
@@ -206,10 +207,18 @@ async function runMarketResearch(
     evidence: extracted.docs,
     claims: claimArtifacts.claims.length > 0 ? claimArtifacts.claims : undefined
   });
+  const reconciled = reconcileOpinionAgainstEvidence({
+    market,
+    opinion: combination.opinion,
+    directRun,
+    evidence: extracted.docs,
+    claims: provisionalEvidenceArtifacts.forecastClaims,
+    sourceSummary: provisionalEvidenceArtifacts.sourceSummary
+  });
 
   const adversarialResult = await runAdversarialReview({
     market,
-    opinion: combination.opinion,
+    opinion: reconciled.opinion,
     providerJudgments: [parallelRun, xaiRun, directRun].filter(
       (judgment): judgment is ProviderResearchJudgment => Boolean(judgment)
     ),
@@ -218,12 +227,12 @@ async function runMarketResearch(
     crossMarketContext: crossMarketContext ?? undefined,
     skip: combination.finalMode === "direct_only" || combination.finalMode === "failed"
   }).catch(() => ({
-    opinion: combination.opinion,
+    opinion: reconciled.opinion,
     review: {
       status: "failed",
       changedOpinion: false,
-      revisedLean: combination.opinion.lean,
-      revisedConfidence: combination.opinion.leanConfidence,
+      revisedLean: reconciled.opinion.lean,
+      revisedConfidence: reconciled.opinion.leanConfidence,
       notes: ["adversarial_review_exception"]
     }
   }));
@@ -295,6 +304,7 @@ async function runMarketResearch(
       ranLocalOpinion: combination.ranLocalOpinion,
       notes: [
         ...combination.notes,
+        ...reconciled.notes,
         ...(crossMarketContext ? ["cross_market_context_loaded"] : ["cross_market_context_empty"]),
         ...adversarialResult.review.notes,
         ...calibrated.summary.notes
@@ -340,7 +350,14 @@ async function runMarketResearch(
   });
   const response = MarketResearchResponseSchema.parse({
     ...baseResponse,
-    decisiveEvidenceStatus: deriveDecisiveEvidenceStatus(baseResponse)
+    decisiveEvidenceStatus: deriveDecisiveEvidenceStatus({
+      final: baseResponse.final,
+      directRun: baseResponse.directRun,
+      evidence: baseResponse.evidence,
+      claims: baseResponse.forecastClaims ?? baseResponse.claims,
+      sourceSummary: baseResponse.sourceSummary,
+      citationsCount: baseResponse.citations.length
+    })
   });
 
   return finalizeResearchResponse(cacheKey, response, request);

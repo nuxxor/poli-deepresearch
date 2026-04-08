@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import type { MarketContext, MarketResearchResponse, Opinion } from "@polymarket/deep-research-contracts";
+import type { Claim, MarketContext, MarketResearchResponse, Opinion, ProviderResearchJudgment } from "@polymarket/deep-research-contracts";
 
 import { resolveAppliedPolicy } from "./policies.js";
 import { buildResearchProductResponse, buildResearchGuardrails, withResearchPresentation } from "./research-projection.js";
@@ -145,6 +145,7 @@ function makeResponse(): MarketResearchResponse {
       }
     ],
     claims: [],
+    forecastClaims: [],
     sourceSummary: {
       officialSourcePresent: false,
       contradictionSourcePresent: false,
@@ -213,6 +214,30 @@ function makeResponse(): MarketResearchResponse {
   };
 }
 
+function makeDirectRun(overrides: Partial<ProviderResearchJudgment> = {}): ProviderResearchJudgment {
+  return {
+    provider: "direct-official-feed",
+    ok: true,
+    parseMode: "direct",
+    resolutionStatus: "NOT_YET_RESOLVED",
+    resolutionConfidence: 0.61,
+    reasoning: "Official source checked directly.",
+    why: "Official source checked directly.",
+    citations: [],
+    rawAnswer: "direct result",
+    raw: {
+      provider: "direct-official-feed",
+      ok: true,
+      query: "atlas launch",
+      durationMs: 5,
+      resultCount: 0,
+      results: [],
+      meta: {}
+    },
+    ...overrides
+  };
+}
+
 test("buildResearchGuardrails abstains when an official-source market is local-only and under-evidenced", () => {
   const response = makeResponse();
 
@@ -240,4 +265,82 @@ test("withResearchPresentation applies guardrails and produces a narrower produc
   assert.equal(product.guardrails.actionability, "abstain");
   assert.equal(product.narrative.watchItems[0], "Official newsroom post");
   assert.equal("strategy" in product, false);
+});
+
+test("buildResearchGuardrails treats official unresolved claims as official_inconclusive", () => {
+  const response = makeResponse();
+  response.strategy = {
+    finalMode: "dual_synthesized",
+    ranParallel: true,
+    ranXai: false,
+    ranDirect: true,
+    ranLocalOpinion: false,
+    notes: []
+  };
+  response.evidence = [
+    {
+      docId: "doc-official",
+      url: "https://company.example.com/newsroom/atlas",
+      canonicalUrl: "https://company.example.com/newsroom/atlas",
+      title: "Official newsroom update",
+      sourceType: "official",
+      observedAt: "2026-04-08T00:00:00.000Z",
+      fetchedAt: "2026-04-08T00:00:00.000Z",
+      retrievalChannel: "official",
+      extractor: "parallel",
+      authorityScore: 0.95,
+      freshnessScore: 0.8,
+      directnessScore: 0.88,
+      contentMarkdown: "The company continues preparing for launch."
+    }
+  ];
+  response.sourceSummary = {
+    ...response.sourceSummary!,
+    officialSourcePresent: true
+  };
+  const claims: Claim[] = [
+    {
+      claimId: "claim-official",
+      docId: "doc-official",
+      claimType: "release_or_launch",
+      subject: "Project Atlas",
+      predicate: "was officially reported as released or launched",
+      object: "The company continues preparing for launch.",
+      polarity: "supports_yes",
+      confidence: 0.72,
+      origin: "heuristic_official"
+    }
+  ];
+  response.claims = claims;
+  response.forecastClaims = claims;
+
+  const guardrails = buildResearchGuardrails(response);
+
+  assert.equal(guardrails.decisiveEvidenceStatus, "official_inconclusive");
+  assert.equal(guardrails.actionability, "monitor");
+  assert.ok(guardrails.reasons.includes("official_evidence_inconclusive"));
+});
+
+test("buildResearchGuardrails marks direct resolved official checks as decisive", () => {
+  const response = makeResponse();
+  response.directRun = makeDirectRun({
+    resolutionStatus: "RESOLVED_YES",
+    resolutionConfidence: 0.97
+  });
+  response.final = makeOpinion({
+    resolutionStatus: "RESOLVED_YES",
+    resolutionConfidence: 0.97,
+    lean: "STRONG_YES",
+    leanConfidence: 0.93,
+    why: "Official source confirms the outcome."
+  });
+  response.sourceSummary = {
+    ...response.sourceSummary!,
+    officialSourcePresent: true
+  };
+
+  const guardrails = buildResearchGuardrails(response);
+
+  assert.equal(guardrails.decisiveEvidenceStatus, "decisive_yes");
+  assert.equal(guardrails.actionability, "high_conviction");
 });

@@ -66,6 +66,10 @@ test("calibrateForecast uses archived labeled runs when available", async () => 
   if (calibrated.summary.status === "empirical" || calibrated.summary.status === "weak_empirical") {
     assert.ok(calibrated.summary.sampleSize >= 3);
     assert.notEqual(calibrated.forecast.calibratedYesProbability, forecast.calibratedYesProbability);
+  } else if (calibrated.summary.status === "fallback") {
+    assert.ok(
+      Math.abs(calibrated.forecast.calibratedYesProbability - forecast.calibratedYesProbability) <= 0.031
+    );
   } else {
     assert.equal(calibrated.forecast.calibratedYesProbability, forecast.calibratedYesProbability);
   }

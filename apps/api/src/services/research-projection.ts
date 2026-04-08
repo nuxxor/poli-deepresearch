@@ -11,10 +11,10 @@ import {
   type MarketResearchResponse,
   type ResearchGuardrails,
   type ResearchProductResponse,
-  type ResearchView,
-  type DecisiveEvidenceStatus
+  type ResearchView
 } from "@polymarket/deep-research-contracts";
 
+import { deriveDecisiveEvidenceStatus } from "./evidence-semantics.js";
 import { probabilityToLean } from "./probabilistic-forecast.js";
 import { buildResolutionContract } from "./resolution-contract.js";
 
@@ -68,7 +68,16 @@ export function buildResearchProductResponse(response: MarketResearchResponse): 
 export function buildResearchGuardrails(response: MarketResearchResponse): ResearchGuardrails {
   const reasons = new Set<string>();
   const runMode = inferRunMode(response);
-  const decisiveEvidenceStatus = response.decisiveEvidenceStatus ?? deriveDecisiveEvidenceStatus(response);
+  const decisiveEvidenceStatus =
+    response.decisiveEvidenceStatus ??
+    deriveDecisiveEvidenceStatus({
+      final: response.final,
+      directRun: response.directRun,
+      evidence: response.evidence,
+      claims: response.forecastClaims ?? response.claims,
+      sourceSummary: response.sourceSummary,
+      citationsCount: response.citations.length
+    });
 
   if (runMode === "local_only") {
     reasons.add("local_only_mode");
@@ -309,26 +318,6 @@ function inferRunMode(response: MarketResearchResponse): ResearchGuardrails["run
   return "degraded";
 }
 
-export function deriveDecisiveEvidenceStatus(response: MarketResearchResponse): DecisiveEvidenceStatus {
-  if (response.sourceSummary?.contradictionSourcePresent) {
-    return "conflicting";
-  }
-
-  const hasOfficialSource = response.sourceSummary?.officialSourcePresent ?? false;
-  if (response.final.resolutionStatus === "RESOLVED_YES" && hasOfficialSource) {
-    return "decisive_yes";
-  }
-  if (response.final.resolutionStatus === "RESOLVED_NO" && hasOfficialSource) {
-    return "decisive_no";
-  }
-  if (hasOfficialSource) {
-    return "official_inconclusive";
-  }
-  if ((response.evidence?.length ?? 0) > 0 || (response.citations?.length ?? 0) > 0) {
-    return "secondary_only";
-  }
-  return "none";
-}
 
 function applyConfidenceCap(current: number | undefined, next: number | undefined): number | undefined {
   if (next == null) {

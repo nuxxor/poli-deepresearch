@@ -13,7 +13,7 @@ import { PROJECT_ROOT } from "../paths.js";
 import { loadArchivedRunSnapshots, type ArchivedRunSnapshot } from "./archive-runs.js";
 import { applyCalibratedProbability } from "./probabilistic-forecast.js";
 
-const GOLD_DATASET_PATH = resolve(PROJECT_ROOT, "evals", "resolved-gold-set.v1.json");
+const GOLD_DATASET_PATH = resolve(PROJECT_ROOT, "evals", "resolved-gold-set.v2.json");
 
 type CalibrationCase = {
   category?: string;

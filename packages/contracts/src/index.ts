@@ -902,6 +902,8 @@ export const ResolvedGoldCaseSchema = z.object({
   slug: z.string().min(1),
   expectedState: z.enum(["YES", "NO"]),
   label: z.string().min(1).optional(),
+  category: z.string().min(1).optional(),
+  resolutionArchetype: z.string().min(1).optional(),
   notes: z.string().optional()
 });
 

@@ -7,101 +7,141 @@
     {
       "slug": "will-joe-biden-get-coronavirus-before-the-election",
       "expectedState": "NO",
+      "category": "politics",
+      "resolutionArchetype": "official_announcement_by_deadline",
       "notes": "Joe Biden did not publicly announce a positive COVID-19 test before the 2020 U.S. election."
     },
     {
       "slug": "will-airbnb-begin-publicly-trading-before-jan-1-2021",
       "expectedState": "YES",
+      "category": "business",
+      "resolutionArchetype": "official_announcement_by_deadline",
       "notes": "Airbnb began public trading on Nasdaq on December 10, 2020."
     },
     {
       "slug": "will-a-new-supreme-court-justice-be-confirmed-before-nov-3rd-2020",
       "expectedState": "YES",
+      "category": "politics",
+      "resolutionArchetype": "appointment_or_resignation",
       "notes": "Amy Coney Barrett was confirmed on October 26, 2020."
     },
     {
       "slug": "will-kim-kardashian-and-kanye-west-divorce-before-jan-1-2021",
       "expectedState": "NO",
+      "category": "entertainment",
+      "resolutionArchetype": "official_announcement_by_deadline",
       "notes": "Kim Kardashian filed for divorce in February 2021, after the market deadline."
     },
     {
       "slug": "will-coinbase-begin-publicly-trading-before-jan-1-2021",
       "expectedState": "NO",
+      "category": "business",
+      "resolutionArchetype": "official_announcement_by_deadline",
       "notes": "Coinbase began public trading in April 2021, after the market deadline."
     },
     {
       "slug": "will-there-be-an-emergency-use-authorization-granted-for-a-covid-19-vaccine-prior-to-nov-3",
       "expectedState": "NO",
+      "category": "legal",
+      "resolutionArchetype": "regulatory_approval",
       "notes": "No COVID-19 vaccine EUA was granted before November 3, 2020."
     },
     {
       "slug": "will-drake-release-a-new-studio-album-before-the-end-of-2020",
       "expectedState": "NO",
+      "category": "entertainment",
+      "resolutionArchetype": "release_or_launch",
       "notes": "Drake did not release a new studio album before the end of 2020."
     },
     {
       "slug": "will-there-be-a-federal-charge-filed-against-hunter-biden-before-2021",
       "expectedState": "NO",
+      "category": "legal",
+      "resolutionArchetype": "legal_outcome",
       "notes": "No federal charge was filed against Hunter Biden before 2021."
     },
     {
       "slug": "will-btc-break-15k-before-2021-1",
       "expectedState": "YES",
+      "category": "crypto",
+      "resolutionArchetype": "numeric_threshold",
       "notes": "Bitcoin traded above $15,000 in November 2020."
     },
     {
       "slug": "will-khabib-win-his-ufc-254-fight",
       "expectedState": "YES",
+      "category": "sports",
+      "resolutionArchetype": "winner_of_event",
       "notes": "Khabib Nurmagomedov defeated Justin Gaethje at UFC 254."
     },
     {
       "slug": "will-trump-get-more-votes-than-2020",
       "expectedState": "YES",
+      "category": "politics",
+      "resolutionArchetype": "numeric_threshold",
       "notes": "Donald Trump received more total votes in the 2024 election than he received in 2020."
     },
     {
       "slug": "republicans-flip-a-2020-biden-state",
       "expectedState": "YES",
+      "category": "politics",
+      "resolutionArchetype": "winner_of_event",
       "notes": "Republicans flipped at least one 2020 Biden state in the 2024 presidential election."
     },
     {
       "slug": "will-trump-win-florida-by-8-points",
       "expectedState": "YES",
+      "category": "politics",
+      "resolutionArchetype": "numeric_threshold",
       "notes": "Trump won Florida by more than 8 percentage points in 2024."
     },
     {
       "slug": "will-biden-win-georgia-democratic-primary",
       "expectedState": "YES",
+      "category": "politics",
+      "resolutionArchetype": "winner_of_event",
       "notes": "Joe Biden won the Georgia Democratic primary on March 12, 2024."
     },
     {
       "slug": "ethereum-etf-begins-trading-by-july-4",
       "expectedState": "NO",
+      "category": "crypto",
+      "resolutionArchetype": "release_or_launch",
       "notes": "Spot Ethereum ETFs began trading on July 23, 2024, after the July 4 deadline."
     },
     {
       "slug": "will-bitcoin-hit-100k-by-tomorrow-1-7-25",
       "expectedState": "YES",
+      "category": "crypto",
+      "resolutionArchetype": "numeric_threshold",
       "notes": "Bitcoin traded above $100,000 before January 7, 2025."
     },
     {
       "slug": "diddy-released-by-july-4",
       "expectedState": "NO",
+      "category": "legal",
+      "resolutionArchetype": "official_announcement_by_deadline",
       "notes": "Sean Combs was not released by July 4, 2025."
     },
     {
       "slug": "will-taylor-swift-release-a-new-original-song-by-august-31",
       "expectedState": "NO",
+      "category": "entertainment",
+      "resolutionArchetype": "release_or_launch",
       "notes": "Taylor Swift did not release a new original song by August 31, 2025."
     },
     {
       "slug": "will-taylor-swift-and-travis-kelce-breakup-before-march",
       "expectedState": "NO",
+      "category": "entertainment",
+      "resolutionArchetype": "official_announcement_by_deadline",
       "notes": "Taylor Swift and Travis Kelce did not break up before March 1, 2025."
     },
     {
       "slug": "will-taylor-swift-endorse-biden-at-the-super-bowl",
       "expectedState": "NO",
+      "category": "politics",
+      "resolutionArchetype": "official_announcement_by_deadline",
       "notes": "Taylor Swift did not endorse Joe Biden during the Super Bowl in February 2024."
     }
   ]
