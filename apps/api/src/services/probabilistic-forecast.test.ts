@@ -99,7 +99,8 @@ const claims: Claim[] = [
     predicate: "announced",
     object: "launch date",
     polarity: "supports_yes",
-    confidence: 0.84
+    confidence: 0.84,
+    origin: "local_model"
   }
 ];
 
@@ -120,4 +121,37 @@ test("buildProbabilisticForecast strengthens aligned YES evidence", () => {
   assert.equal(revised.lean, forecast.lean);
   assert.equal(revised.leanConfidence, forecast.confidence);
   assert.match(revised.why, /Probabilistic aggregation/);
+});
+
+test("buildProbabilisticForecast ignores opinion-derived fallback claims", () => {
+  const withoutClaims = buildProbabilisticForecast({
+    opinion: baseOpinion,
+    providerJudgments,
+    claims: [],
+    evidence
+  });
+  const withOpinionDerivedClaims = buildProbabilisticForecast({
+    opinion: baseOpinion,
+    providerJudgments,
+    claims: [
+      {
+        claimId: "claim-opinion",
+        docId: "doc-1",
+        claimType: "release_or_launch",
+        subject: "Company",
+        predicate: "is reported as released or launched",
+        object: "Launch page",
+        polarity: "supports_yes",
+        confidence: 0.92,
+        origin: "opinion_derived"
+      }
+    ],
+    evidence
+  });
+
+  assert.equal(withOpinionDerivedClaims.posteriorYesProbability, withoutClaims.posteriorYesProbability);
+  assert.equal(
+    withOpinionDerivedClaims.components.filter((component) => component.channel === "claim").length,
+    withoutClaims.components.filter((component) => component.channel === "claim").length
+  );
 });

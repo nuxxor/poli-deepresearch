@@ -13,9 +13,9 @@ import { PROJECT_ROOT } from "../paths.js";
 import { loadArchivedRunSnapshots, type ArchivedRunSnapshot } from "./archive-runs.js";
 import { applyCalibratedProbability } from "./probabilistic-forecast.js";
 
-const GOLD_DATASET_PATH = resolve(PROJECT_ROOT, "evals", "resolved-gold-set.v2.json");
+const GOLD_DATASET_PATH = resolve(PROJECT_ROOT, "evals", "resolved-gold-set.v1.json");
 
-export type CalibrationCase = {
+type CalibrationCase = {
   category?: string;
   resolutionArchetype?: string;
   correct: boolean;
@@ -29,14 +29,6 @@ export async function calibrateForecast(
   forecast: ProbabilisticForecast
 ): Promise<{ forecast: ProbabilisticForecast; summary: CalibrationSummary }> {
   const cases = await loadCalibrationCases();
-  return calibrateForecastWithCases(market, forecast, cases);
-}
-
-export function calibrateForecastWithCases(
-  market: MarketContext,
-  forecast: ProbabilisticForecast,
-  cases: CalibrationCase[]
-): { forecast: ProbabilisticForecast; summary: CalibrationSummary } {
   const direction = forecast.calibratedYesProbability >= 0.5 ? "YES" : "NO";
   const rawDirectionalConfidence = Math.abs(forecast.calibratedYesProbability - 0.5) * 2;
 
@@ -55,26 +47,39 @@ export function calibrateForecastWithCases(
   const categoryOnly = pickCases(cases, market.canonicalMarket.category, undefined, direction);
   const directionOnly = cases.filter((item) => item.direction === direction);
 
-  const chosen = exact.length >= 2 ? exact : categoryOnly.length >= 2 ? categoryOnly : directionOnly;
+  const strongCases =
+    exact.length >= 6 ? exact : categoryOnly.length >= 8 ? categoryOnly : directionOnly.length >= 12 ? directionOnly : [];
+  const weakCases =
+    exact.length >= 3 ? exact : categoryOnly.length >= 4 ? categoryOnly : directionOnly.length >= 6 ? directionOnly : [];
+  const chosen = strongCases.length > 0 ? strongCases : weakCases;
+  const status = strongCases.length > 0 ? "empirical" : weakCases.length > 0 ? "weak_empirical" : "fallback";
   const bucketAccuracy = smoothedAccuracy(chosen);
   const categoryAccuracy = categoryOnly.length > 0 ? smoothedAccuracy(categoryOnly) : undefined;
   const archetypeAccuracy = exact.length > 0 ? smoothedAccuracy(exact) : undefined;
   const fallbackAccuracy = defaultAccuracyForLean(forecast.lean);
   const referenceAccuracy = chosen.length > 0 ? bucketAccuracy : fallbackAccuracy;
-  const calibratedYesProbability = deriveCalibratedYesProbability(
+  const proposedCalibratedYesProbability = deriveCalibratedYesProbability(
     forecast.calibratedYesProbability,
     referenceAccuracy
+  );
+  const adjustmentCap = status === "empirical" ? 0.12 : status === "weak_empirical" ? 0.05 : 0.03;
+  const calibratedYesProbability = clamp(
+    0.02,
+    0.98,
+    forecast.calibratedYesProbability +
+      clamp(-adjustmentCap, adjustmentCap, proposedCalibratedYesProbability - forecast.calibratedYesProbability)
   );
 
   const notes = [
     `direction=${direction.toLowerCase()}`,
     `raw_confidence=${rawDirectionalConfidence.toFixed(3)}`,
     `bucket_accuracy=${referenceAccuracy.toFixed(3)}`,
+    `calibration_status=${status}`,
     chosen.length > 0 ? `bucket_size=${chosen.length}` : "fallback_prior_used"
   ];
 
   const summary = CalibrationSummarySchema.parse({
-    status: chosen.length > 0 ? "empirical" : "fallback",
+    status,
     sampleSize: chosen.length,
     bucketAccuracy: referenceAccuracy,
     categoryAccuracy,
@@ -87,7 +92,11 @@ export function calibrateForecastWithCases(
     forecast: applyCalibratedProbability(
       forecast,
       clamp(0.02, 0.98, calibratedYesProbability),
-      `Calibration adjusted confidence using ${chosen.length > 0 ? `${chosen.length} labeled archived cases` : "a fallback prior"}.`
+      status === "empirical"
+        ? `Calibration adjusted confidence using ${chosen.length} labeled archived cases.`
+        : status === "weak_empirical"
+          ? `Calibration made a small adjustment using a weak empirical bucket of ${chosen.length} labeled cases.`
+          : "Calibration applied a small fallback prior adjustment."
     ),
     summary
   };

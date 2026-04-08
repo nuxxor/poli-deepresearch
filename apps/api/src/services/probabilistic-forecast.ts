@@ -19,8 +19,26 @@ type BuildProbabilisticForecastInput = {
 export function buildProbabilisticForecast(input: BuildProbabilisticForecastInput): ProbabilisticForecast {
   const components: ProbabilisticContribution[] = [];
   let logOdds = 0;
+  const normalizedProviders = input.providerJudgments
+    .map((provider) => ({
+      provider,
+      normalized: providerProbability(provider)
+    }))
+    .filter(
+      (
+        entry
+      ): entry is {
+        provider: ProviderResearchJudgment;
+        normalized: { probability: number; weight: number };
+      } => Boolean(entry.normalized)
+    );
 
   const opinionProbability = opinionToProbability(input.opinion);
+  const opinionWeight = clamp(
+    0.28,
+    0.75,
+    0.45 + input.opinion.leanConfidence * 0.35 - Math.min(0.18, normalizedProviders.length * 0.06)
+  );
   pushComponent(
     components,
     {
@@ -29,19 +47,14 @@ export function buildProbabilisticForecast(input: BuildProbabilisticForecastInpu
       channel: "opinion",
       probability: opinionProbability,
       direction: directionFromProbability(opinionProbability),
-      weight: 0.45 + input.opinion.leanConfidence * 0.35,
+      weight: opinionWeight,
       detail: clipSentence(input.opinion.why)
     },
-    (0.45 + input.opinion.leanConfidence * 0.35) * logit(opinionProbability)
+    opinionWeight * logit(opinionProbability)
   );
   logOdds += components.at(-1)?.contribution ?? 0;
 
-  for (const provider of input.providerJudgments) {
-    const normalized = providerProbability(provider);
-    if (!normalized) {
-      continue;
-    }
-
+  for (const { provider, normalized } of normalizedProviders) {
     const contribution = normalized.weight * logit(normalized.probability);
     pushComponent(
       components,
@@ -65,16 +78,21 @@ export function buildProbabilisticForecast(input: BuildProbabilisticForecastInpu
       clamp(0.15, 1, doc.authorityScore * 0.45 + doc.freshnessScore * 0.2 + doc.directnessScore * 0.35)
     ])
   );
+  const sourceTypes = new Map(input.evidence.map((doc) => [doc.docId, doc.sourceType]));
 
-  for (const claim of input.claims.slice(0, 16)) {
+  for (const claim of input.claims.filter((item) => item.origin !== "opinion_derived").slice(0, 16)) {
     const direction = claimDirection(claim);
     if (direction === "neutral") {
       continue;
     }
 
     const sourceScore = sourceScores.get(claim.docId) ?? 0.4;
-    const weight = clamp(0.08, 0.5, sourceScore * clamp(0.1, 1, claim.confidence));
-    const probability = direction === "yes" ? 0.74 : 0.26;
+    const weight = clamp(
+      0.05,
+      normalizedProviders.length > 0 ? 0.32 : 0.42,
+      sourceScore * claimOriginWeight(claim.origin) * clamp(0.1, 1, claim.confidence)
+    );
+    const probability = claimProbability(direction, claim.origin, sourceTypes.get(claim.docId));
     const contribution = weight * logit(probability);
 
     pushComponent(
@@ -258,6 +276,34 @@ function providerLabel(provider: ProviderResearchJudgment["provider"]): string {
     case "local-disabled-fallback":
       return "Local fallback";
   }
+}
+
+function claimOriginWeight(claimOrigin: Claim["origin"]): number {
+  switch (claimOrigin) {
+    case "heuristic_official":
+      return 0.75;
+    case "local_model":
+      return 0.62;
+    case "opinion_derived":
+      return 0;
+  }
+}
+
+function claimProbability(
+  direction: "yes" | "no",
+  origin: Claim["origin"],
+  sourceType: EvidenceDoc["sourceType"] | undefined
+): number {
+  const sourceBonus = sourceType === "official" ? 0.04 : 0;
+  const base =
+    origin === "heuristic_official"
+      ? 0.76 + sourceBonus
+      : origin === "local_model"
+        ? 0.7 + sourceBonus / 2
+        : 0.5;
+
+  const clamped = clamp(0.55, 0.84, base);
+  return direction === "yes" ? clamped : 1 - clamped;
 }
 
 function opinionToProbability(opinion: Opinion): number {

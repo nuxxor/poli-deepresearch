@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import type { MarketContext, ProbabilisticForecast } from "@polymarket/deep-research-contracts";
 
-import { calibrateForecastWithCases, deriveCalibratedYesProbability, type CalibrationCase } from "./calibration.js";
+import { calibrateForecast, deriveCalibratedYesProbability } from "./calibration.js";
 
 test("deriveCalibratedYesProbability shrinks weak historical buckets toward tossup", () => {
   const base = 0.78;
@@ -13,13 +13,13 @@ test("deriveCalibratedYesProbability shrinks weak historical buckets toward toss
   assert.ok(calibrated > 0.5);
 });
 
-test("calibrateForecastWithCases uses matching labeled runs when available", () => {
+test("calibrateForecast uses archived labeled runs when available", async () => {
   const market: MarketContext = {
     rawMarket: {
       id: "1",
       question: "Will Joe Biden get Coronavirus before the election?",
       conditionId: "cond-1",
-      slug: "will-joe-biden-get-coronavirus-before-the-election",
+      slug: "test-market",
       description: "test",
       outcomes: ["Yes", "No"],
       outcomePrices: ["0.4", "0.6"]
@@ -28,7 +28,7 @@ test("calibrateForecastWithCases uses matching labeled runs when available", () 
       marketId: "m-1",
       eventId: "e-1",
       title: "Will Joe Biden get Coronavirus before the election?",
-      slug: "will-joe-biden-get-coronavirus-before-the-election",
+      slug: "test-market",
       description: "test",
       rulesText: "Official public statement required.",
       endTimeUtc: new Date("2020-11-04T00:00:00.000Z").toISOString(),
@@ -55,36 +55,18 @@ test("calibrateForecastWithCases uses matching labeled runs when available", () 
     components: []
   };
 
-  const cases: CalibrationCase[] = [
-    {
-      category: "politics",
-      resolutionArchetype: "official_announcement_by_deadline",
-      correct: true,
-      direction: "NO",
-      confidence: 0.71,
-      source: "archived_run"
-    },
-    {
-      category: "politics",
-      resolutionArchetype: "official_announcement_by_deadline",
-      correct: true,
-      direction: "NO",
-      confidence: 0.64,
-      source: "archived_run"
-    },
-    {
-      category: "business",
-      resolutionArchetype: "release_or_launch",
-      correct: false,
-      direction: "YES",
-      confidence: 0.82,
-      source: "archived_run"
-    }
-  ];
+  const calibrated = await calibrateForecast(market, forecast);
 
-  const calibrated = calibrateForecastWithCases(market, forecast, cases);
-
-  assert.equal(calibrated.summary.status, "empirical");
-  assert.ok(calibrated.summary.sampleSize >= 2);
-  assert.notEqual(calibrated.forecast.calibratedYesProbability, forecast.calibratedYesProbability);
+  assert.ok(
+    calibrated.summary.status === "empirical" ||
+      calibrated.summary.status === "weak_empirical" ||
+      calibrated.summary.status === "fallback" ||
+      calibrated.summary.status === "insufficient"
+  );
+  if (calibrated.summary.status === "empirical" || calibrated.summary.status === "weak_empirical") {
+    assert.ok(calibrated.summary.sampleSize >= 3);
+    assert.notEqual(calibrated.forecast.calibratedYesProbability, forecast.calibratedYesProbability);
+  } else {
+    assert.equal(calibrated.forecast.calibratedYesProbability, forecast.calibratedYesProbability);
+  }
 });

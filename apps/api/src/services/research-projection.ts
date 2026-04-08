@@ -11,7 +11,8 @@ import {
   type MarketResearchResponse,
   type ResearchGuardrails,
   type ResearchProductResponse,
-  type ResearchView
+  type ResearchView,
+  type DecisiveEvidenceStatus
 } from "@polymarket/deep-research-contracts";
 
 import { probabilityToLean } from "./probabilistic-forecast.js";
@@ -67,6 +68,7 @@ export function buildResearchProductResponse(response: MarketResearchResponse): 
 export function buildResearchGuardrails(response: MarketResearchResponse): ResearchGuardrails {
   const reasons = new Set<string>();
   const runMode = inferRunMode(response);
+  const decisiveEvidenceStatus = response.decisiveEvidenceStatus ?? deriveDecisiveEvidenceStatus(response);
 
   if (runMode === "local_only") {
     reasons.add("local_only_mode");
@@ -83,8 +85,23 @@ export function buildResearchGuardrails(response: MarketResearchResponse): Resea
   if (response.calibrationSummary?.status === "insufficient") {
     reasons.add("calibration_insufficient");
   }
+  if (response.calibrationSummary?.status === "weak_empirical") {
+    reasons.add("calibration_weak_empirical");
+  }
   if (response.adversarialReview?.status === "failed") {
     reasons.add("adversarial_review_failed");
+  }
+  if (response.claimExtractionStatus === "failed") {
+    reasons.add("claim_extraction_failed");
+  }
+  if (decisiveEvidenceStatus === "secondary_only") {
+    reasons.add("secondary_sources_only");
+  }
+  if (decisiveEvidenceStatus === "official_inconclusive") {
+    reasons.add("official_evidence_inconclusive");
+  }
+  if (decisiveEvidenceStatus === "conflicting") {
+    reasons.add("decisive_evidence_conflicting");
   }
 
   let confidenceCapApplied: number | undefined;
@@ -109,6 +126,22 @@ export function buildResearchGuardrails(response: MarketResearchResponse): Resea
     confidenceCapApplied,
     reasons.has("calibration_insufficient") ? 0.68 : undefined
   );
+  confidenceCapApplied = applyConfidenceCap(
+    confidenceCapApplied,
+    reasons.has("calibration_weak_empirical") ? 0.66 : undefined
+  );
+  confidenceCapApplied = applyConfidenceCap(
+    confidenceCapApplied,
+    reasons.has("official_evidence_inconclusive") ? 0.64 : undefined
+  );
+  confidenceCapApplied = applyConfidenceCap(
+    confidenceCapApplied,
+    reasons.has("secondary_sources_only") ? 0.55 : undefined
+  );
+  confidenceCapApplied = applyConfidenceCap(
+    confidenceCapApplied,
+    reasons.has("decisive_evidence_conflicting") ? 0.53 : undefined
+  );
 
   const currentConfidence = response.probabilisticForecast?.confidence ?? response.final.leanConfidence;
   const effectiveConfidence = confidenceCapApplied == null
@@ -118,8 +151,13 @@ export function buildResearchGuardrails(response: MarketResearchResponse): Resea
   const actionability =
     response.final.resolutionStatus !== "NOT_YET_RESOLVED"
       ? "high_conviction"
-      : reasons.has("official_source_missing") || reasons.has("local_only_mode")
+      : response.market.canonicalMarket.officialSourceRequired &&
+          (decisiveEvidenceStatus === "secondary_only" || decisiveEvidenceStatus === "none")
         ? "abstain"
+        : reasons.has("official_source_missing") || reasons.has("local_only_mode")
+        ? "abstain"
+        : decisiveEvidenceStatus === "conflicting" || decisiveEvidenceStatus === "official_inconclusive"
+          ? "monitor"
         : effectiveConfidence >= 0.72 && !reasons.has("contradictory_evidence_present")
           ? "high_conviction"
           : reasons.size >= 3
@@ -131,7 +169,9 @@ export function buildResearchGuardrails(response: MarketResearchResponse): Resea
     degraded: reasons.size > 0,
     reasons: [...reasons],
     actionability,
-    confidenceCapApplied
+    confidenceCapApplied,
+    decisiveEvidenceStatus,
+    claimExtractionStatus: response.claimExtractionStatus
   });
 }
 
@@ -185,7 +225,7 @@ export function buildResearchView(
   const opinion = response.final;
   const probabilisticForecast = response.probabilisticForecast;
   const probabilitySource = probabilisticForecast
-    ? response.calibrationSummary?.status === "empirical" || response.calibrationSummary?.status === "fallback"
+    ? response.calibrationSummary?.status === "empirical" || response.calibrationSummary?.status === "weak_empirical"
       ? "calibrated_forecast"
       : "probabilistic_forecast"
     : "opinion";
@@ -211,7 +251,9 @@ export function buildResearchView(
 
   const rationale = [
     opinion.why,
-    response.calibrationSummary?.status && response.calibrationSummary.status !== "insufficient"
+    response.calibrationSummary?.status &&
+    response.calibrationSummary.status !== "insufficient" &&
+    response.calibrationSummary.status !== "fallback"
       ? `Calibration ${response.calibrationSummary.status} using ${response.calibrationSummary.sampleSize} labeled cases.`
       : null,
     guardrails.degraded
@@ -265,6 +307,27 @@ function inferRunMode(response: MarketResearchResponse): ResearchGuardrails["run
     return "full_stack";
   }
   return "degraded";
+}
+
+export function deriveDecisiveEvidenceStatus(response: MarketResearchResponse): DecisiveEvidenceStatus {
+  if (response.sourceSummary?.contradictionSourcePresent) {
+    return "conflicting";
+  }
+
+  const hasOfficialSource = response.sourceSummary?.officialSourcePresent ?? false;
+  if (response.final.resolutionStatus === "RESOLVED_YES" && hasOfficialSource) {
+    return "decisive_yes";
+  }
+  if (response.final.resolutionStatus === "RESOLVED_NO" && hasOfficialSource) {
+    return "decisive_no";
+  }
+  if (hasOfficialSource) {
+    return "official_inconclusive";
+  }
+  if ((response.evidence?.length ?? 0) > 0 || (response.citations?.length ?? 0) > 0) {
+    return "secondary_only";
+  }
+  return "none";
 }
 
 function applyConfidenceCap(current: number | undefined, next: number | undefined): number | undefined {

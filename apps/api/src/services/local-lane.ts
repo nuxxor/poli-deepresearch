@@ -159,7 +159,8 @@ export async function extractClaimsWithLocalModel(
       object: clipForLocal(claim.object, 220),
       eventTime: toIsoDateMaybe(claim.eventTime),
       polarity: claim.polarity,
-      confidence: claim.confidence
+      confidence: claim.confidence,
+      origin: "local_model"
     })
   );
 }

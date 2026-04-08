@@ -92,7 +92,8 @@ export const ClaimSchema = z.object({
   object: z.string().min(1),
   eventTime: z.string().datetime().optional(),
   polarity: z.enum(["supports_yes", "supports_no", "neutral", "contradictory"]),
-  confidence: z.number().min(0).max(1)
+  confidence: z.number().min(0).max(1),
+  origin: z.enum(["local_model", "heuristic_official", "opinion_derived"])
 });
 
 export const ResolutionStatusSchema = z.enum([
@@ -242,12 +243,31 @@ export const ResearchActionabilitySchema = z.enum([
   "abstain"
 ]);
 
+export const ClaimExtractionStatusSchema = z.enum([
+  "extracted",
+  "heuristic",
+  "skipped_budget",
+  "skipped_category",
+  "failed"
+]);
+
+export const DecisiveEvidenceStatusSchema = z.enum([
+  "decisive_yes",
+  "decisive_no",
+  "official_inconclusive",
+  "secondary_only",
+  "conflicting",
+  "none"
+]);
+
 export const ResearchGuardrailsSchema = z.object({
   runMode: z.enum(["full_stack", "hybrid", "local_only", "direct_only", "degraded"]),
   degraded: z.boolean(),
   reasons: z.array(z.string()).max(12),
   actionability: ResearchActionabilitySchema,
-  confidenceCapApplied: z.number().min(0).max(1).optional()
+  confidenceCapApplied: z.number().min(0).max(1).optional(),
+  decisiveEvidenceStatus: DecisiveEvidenceStatusSchema.optional(),
+  claimExtractionStatus: ClaimExtractionStatusSchema.optional()
 });
 
 export const PublicConfigSchema = z.object({
@@ -656,7 +676,7 @@ export const AdversarialReviewSchema = z.object({
 });
 
 export const CalibrationSummarySchema = z.object({
-  status: z.enum(["empirical", "fallback", "insufficient"]),
+  status: z.enum(["empirical", "weak_empirical", "fallback", "insufficient"]),
   sampleSize: z.number().int().nonnegative(),
   bucketAccuracy: z.number().min(0).max(1),
   categoryAccuracy: z.number().min(0).max(1).optional(),
@@ -748,6 +768,8 @@ export const MarketResearchResponseSchema = z.object({
   localPlanner: LocalPlannerSchema.optional(),
   evidence: z.array(EvidenceDocSchema),
   claims: z.array(ClaimSchema).optional(),
+  forecastClaims: z.array(ClaimSchema).optional(),
+  claimExtractionStatus: ClaimExtractionStatusSchema.optional(),
   offlineSummary: OfflineSummarySchema.optional(),
   signals: MarketSignalsSummarySchema.optional(),
   macroOfficialContext: MacroOfficialContextSchema.optional(),
@@ -757,6 +779,7 @@ export const MarketResearchResponseSchema = z.object({
   probabilisticForecast: ProbabilisticForecastSchema.optional(),
   adversarialReview: AdversarialReviewSchema.optional(),
   calibrationSummary: CalibrationSummarySchema.optional(),
+  decisiveEvidenceStatus: DecisiveEvidenceStatusSchema.optional(),
   marketOdds: MarketOddsSchema.optional(),
   guardrails: ResearchGuardrailsSchema.optional(),
   researchView: ResearchViewSchema.optional(),
@@ -960,6 +983,8 @@ export type ResolutionAuthorityKind = z.infer<typeof ResolutionAuthorityKindSche
 export type ResolutionComparator = z.infer<typeof ResolutionComparatorSchema>;
 export type ResolutionContract = z.infer<typeof ResolutionContractSchema>;
 export type ResearchActionability = z.infer<typeof ResearchActionabilitySchema>;
+export type ClaimExtractionStatus = z.infer<typeof ClaimExtractionStatusSchema>;
+export type DecisiveEvidenceStatus = z.infer<typeof DecisiveEvidenceStatusSchema>;
 export type ResearchGuardrails = z.infer<typeof ResearchGuardrailsSchema>;
 export type PublicConfig = z.infer<typeof PublicConfigSchema>;
 export type ProviderName = z.infer<typeof ProviderNameSchema>;

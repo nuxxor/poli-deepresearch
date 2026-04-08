@@ -223,6 +223,7 @@ test("buildResearchGuardrails abstains when an official-source market is local-o
   assert.equal(guardrails.actionability, "abstain");
   assert.ok(guardrails.reasons.includes("local_only_mode"));
   assert.ok(guardrails.reasons.includes("official_source_missing"));
+  assert.equal(guardrails.decisiveEvidenceStatus, "secondary_only");
   assert.equal(guardrails.confidenceCapApplied, 0.55);
 });
 

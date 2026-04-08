@@ -31,7 +31,8 @@ type BuildEvidenceGraphInput = {
 export function buildEvidenceGraphArtifacts(input: BuildEvidenceGraphInput): {
   sourceSummary: SourceSummary;
   evidenceGraph: EvidenceGraph;
-  claims: Claim[];
+  graphClaims: Claim[];
+  forecastClaims: Claim[];
 } {
   const providers: ProviderResearchJudgment[] = [input.parallelRun, input.xaiRun, input.directRun].filter(
     (judgment): judgment is ProviderResearchJudgment => Boolean(judgment)
@@ -50,15 +51,17 @@ export function buildEvidenceGraphArtifacts(input: BuildEvidenceGraphInput): {
       return left.docId.localeCompare(right.docId);
     });
 
-  const claims =
-    input.claims && input.claims.length > 0
-      ? input.claims
+  const extractedClaims = input.claims && input.claims.length > 0 ? input.claims : [];
+  const graphClaims =
+    extractedClaims.length > 0
+      ? extractedClaims
       : cards
           .map((card) => {
             const doc = input.evidence.find((candidate) => candidate.docId === card.docId);
             return doc ? buildClaimFromEvidenceDoc(doc, card, input.market) : null;
           })
           .filter((claim): claim is Claim => Boolean(claim));
+  const forecastClaims = graphClaims.filter((claim) => claim.origin !== "opinion_derived");
 
   const nodes: EvidenceGraphNode[] = [];
   const edges: EvidenceGraphEdge[] = [];
@@ -99,7 +102,7 @@ export function buildEvidenceGraphArtifacts(input: BuildEvidenceGraphInput): {
       });
     }
 
-    const docClaims = claims.filter((claim) => claim.docId === card.docId);
+    const docClaims = graphClaims.filter((claim) => claim.docId === card.docId);
 
     for (const claim of docClaims) {
       nodes.push({
@@ -144,7 +147,8 @@ export function buildEvidenceGraphArtifacts(input: BuildEvidenceGraphInput): {
       nodes,
       edges
     }),
-    claims
+    graphClaims,
+    forecastClaims
   };
 }
 
@@ -177,7 +181,7 @@ function formatProviderState(provider: ProviderResearchJudgment): string {
 }
 
 export function withEvidenceArtifacts(response: MarketResearchResponse): MarketResearchResponse {
-  if (response.sourceSummary && response.evidenceGraph && response.claims) {
+  if (response.sourceSummary && response.evidenceGraph && response.claims && response.forecastClaims) {
     return response;
   }
 
@@ -192,7 +196,8 @@ export function withEvidenceArtifacts(response: MarketResearchResponse): MarketR
 
   return MarketResearchResponseSchema.parse({
     ...response,
-    claims: response.claims ?? artifacts.claims,
+    claims: response.claims ?? artifacts.graphClaims,
+    forecastClaims: response.forecastClaims ?? artifacts.forecastClaims,
     sourceSummary: response.sourceSummary ?? artifacts.sourceSummary,
     evidenceGraph: response.evidenceGraph ?? artifacts.evidenceGraph
   });
@@ -304,7 +309,8 @@ function buildClaimFromEvidenceDoc(doc: EvidenceDoc, card: SourceScoreCard, mark
     object,
     eventTime: doc.publishedAt,
     polarity: card.stance,
-    confidence: clamp01(card.score)
+    confidence: clamp01(card.score),
+    origin: "opinion_derived"
   });
 }
 
