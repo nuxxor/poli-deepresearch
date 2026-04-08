@@ -27,6 +27,19 @@ function parseStringArray(rawValue: unknown): string[] {
   }
 }
 
+const GENERIC_RELATED_TOKENS = new Set([
+  "publicly",
+  "trading",
+  "launch",
+  "launches",
+  "launching",
+  "release",
+  "releases",
+  "released",
+  "before",
+  "after"
+]);
+
 function extractPrimaryClause(question: string): string {
   return question
     .replace(/^will\s+/i, "")
@@ -333,27 +346,79 @@ export type RelatedMarketCandidate = {
   resolutionArchetype: string;
 };
 
+export function buildRelatedSearchQueries(title: string): string[] {
+  const tokens = extractRelatedSearchTokens(title).slice(0, 3);
+  const queries: string[] = [];
+
+  if (tokens.length >= 2) {
+    queries.push(`${tokens[0]} ${tokens[1]}`);
+  }
+
+  queries.push(...tokens);
+  return queries.filter((query, index, items) => query !== "" && items.indexOf(query) === index);
+}
+
+export function isRelatedCandidateRelevant(currentTitle: string, candidateTitle: string): boolean {
+  const currentTokens = new Set(extractRelatedSearchTokens(currentTitle));
+  const candidateTokens = extractRelatedSearchTokens(candidateTitle);
+  const sharedTokens = candidateTokens.filter((token) => currentTokens.has(token));
+
+  if (sharedTokens.length === 0) {
+    return false;
+  }
+
+  const strongSharedToken = sharedTokens.some((token) => token.length >= 5 && !isGenericRelatedToken(token));
+  return strongSharedToken || sharedTokens.length >= 2;
+}
+
+export function shouldKeepRelatedCandidate(options: {
+  currentTitle: string;
+  currentCategory: string;
+  currentArchetype: string;
+  candidateTitle: string;
+  candidateCategory: string;
+  candidateArchetype: string;
+  sameEvent: boolean;
+}): boolean {
+  if (isRelatedCandidateRelevant(options.currentTitle, options.candidateTitle)) {
+    return true;
+  }
+
+  if (!options.sameEvent) {
+    return false;
+  }
+
+  return (
+    options.currentCategory === options.candidateCategory ||
+    options.currentArchetype === options.candidateArchetype
+  );
+}
+
 export async function fetchRelatedMarketCandidates(
   market: MarketContext,
   limit: number
 ): Promise<RelatedMarketCandidate[]> {
   const eventId = market.rawMarket.events?.[0]?.id ?? market.canonicalMarket.eventId;
-  const queryTokens = extractRelatedSearchTokens(market.canonicalMarket.title).slice(0, 2);
+  const queryTerms = buildRelatedSearchQueries(market.canonicalMarket.title).slice(0, 2);
 
   const requests: Array<Promise<PolymarketMarket[]>> = [];
   if (eventId != null && String(eventId).trim() !== "") {
     requests.push(
       fetchGammaMarkets({
         event_id: String(eventId),
+        active: "true",
+        closed: "false",
         limit: String(Math.max(limit * 2, 8))
       }).catch(() => [])
     );
   }
 
-  for (const token of queryTokens) {
+  for (const query of queryTerms) {
     requests.push(
       fetchGammaMarkets({
-        search: token,
+        search: query,
+        active: "true",
+        closed: "false",
         limit: String(Math.max(limit * 2, 8))
       }).catch(() => [])
     );
@@ -379,6 +444,22 @@ export async function fetchRelatedMarketCandidates(
     if (seen.has(slug)) {
       continue;
     }
+
+    const sameEvent = String(rawMarket.events?.[0]?.id ?? "") === String(eventId ?? "");
+    if (
+      !shouldKeepRelatedCandidate({
+        currentTitle: market.canonicalMarket.title,
+        currentCategory: market.canonicalMarket.category,
+        currentArchetype: market.canonicalMarket.resolutionArchetype,
+        candidateTitle: candidate.title,
+        candidateCategory: candidate.category,
+        candidateArchetype: candidate.resolutionArchetype,
+        sameEvent
+      })
+    ) {
+      continue;
+    }
+
     seen.add(slug);
     items.push({
       slug,
@@ -413,17 +494,30 @@ function extractRelatedSearchTokens(title: string): string[] {
     "with",
     "who",
     "what",
-    "when"
+    "when",
+    "publicly",
+    "trading",
+    "traded",
+    "launch",
+    "launches",
+    "launching",
+    "release",
+    "releases",
+    "released"
   ]);
 
-  return title
+  return extractPrimaryClause(title)
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
     .map((token) => token.trim())
-    .filter((token) => token.length >= 4 && !stopwords.has(token))
+    .filter((token) => token.length >= 3 && !stopwords.has(token) && !/^\d+$/.test(token))
     .sort((left, right) => right.length - left.length)
     .filter((token, index, items) => items.indexOf(token) === index);
+}
+
+function isGenericRelatedToken(token: string): boolean {
+  return GENERIC_RELATED_TOKENS.has(token);
 }
 
 function sleep(ms: number): Promise<void> {
