@@ -34,8 +34,73 @@ const DEFAULT_PACK = makePack({
   escalationRules: ["Escalate when official evidence is missing, conflicting, or only social coverage exists."]
 });
 
+const DEFAULT_WINNER_PACK = makePack({
+  id: "default-winner-of-event",
+  category: "default",
+  resolutionArchetype: "winner_of_event",
+  sourcePriority: ["official event or league results", "official scoreboard", "AP/Reuters", "major event coverage"],
+  queryFocusTerms: ["official results", "winner", "scoreboard", "final result"],
+  decisiveYesRules: ["YES requires an official result showing the named side as winner or that the stated threshold condition was met."],
+  decisiveNoRules: ["NO requires an official result showing another side won or the named threshold was not met by the deadline."],
+  contradictionRules: ["Ignore commentary and previews once official results exist."],
+  escalationRules: ["Escalate only if official result sources disagree or remain unavailable after the event."]
+});
+
+const DEFAULT_RELEASE_PACK = makePack({
+  id: "default-release-or-launch",
+  category: "default",
+  resolutionArchetype: "release_or_launch",
+  sourcePriority: ["official issuer/publisher/league source", "regulator or exchange page", "Reuters/AP/Bloomberg", "major trade press"],
+  queryFocusTerms: ["official release", "available now", "launch", "listing", "official announcement"],
+  decisiveYesRules: ["YES requires official public availability, an official release/listing announcement, or another rule-consistent launch confirmation."],
+  decisiveNoRules: ["NO requires a superseding official delay beyond the deadline, or the deadline passing without the qualifying launch/release."],
+  contradictionRules: ["Teasers, rumors, and marketing hints are not decisive without official release channels."],
+  escalationRules: ["Escalate when official and major-media framing differ on whether a qualifying launch actually occurred."]
+});
+
+const DEFAULT_LEGAL_PACK = makePack({
+  id: "default-legal-outcome",
+  category: "default",
+  resolutionArchetype: "legal_outcome",
+  sourcePriority: ["court record", "official prosecutor or agency statement", "AP/Reuters", "major legal press"],
+  queryFocusTerms: ["court filing", "judgment", "charge filed", "official legal record"],
+  decisiveYesRules: ["YES requires an official court, prosecutor, or agency record matching the legal outcome in the market."],
+  decisiveNoRules: ["NO requires the deadline to pass without the legal event, or an official record establishing the opposite outcome."],
+  contradictionRules: ["Commentary and third-party summaries do not outweigh the official legal record."],
+  escalationRules: ["Escalate when the legal question depends on procedural nuance or overlapping proceedings."]
+});
+
+const DEFAULT_REGULATORY_PACK = makePack({
+  id: "default-regulatory-approval",
+  category: "default",
+  resolutionArchetype: "regulatory_approval",
+  sourcePriority: ["official regulator or agency", "court record if applicable", "Reuters/AP/Bloomberg", "major trade press"],
+  queryFocusTerms: ["official approval", "agency filing", "order", "authorization", "approval date"],
+  decisiveYesRules: ["YES requires an official regulator or agency action matching the market terms."],
+  decisiveNoRules: ["NO requires an official denial, a non-qualifying decision, or the deadline passing without approval."],
+  contradictionRules: ["Summaries and leaks do not outweigh the official agency record."],
+  escalationRules: ["Escalate when the relevant agency action is unclear or only partially reported."]
+});
+
+const DEFAULT_NUMERIC_THRESHOLD_PACK = makePack({
+  id: "default-numeric-threshold",
+  category: "default",
+  resolutionArchetype: "numeric_threshold",
+  sourcePriority: ["official primary data source", "official result tables", "Reuters/AP/Bloomberg", "major domain press"],
+  queryFocusTerms: ["official result", "final value", "threshold", "official table", "published figure"],
+  decisiveYesRules: ["YES requires the official value to meet the stated threshold under the market rules."],
+  decisiveNoRules: ["NO requires the official value to miss the threshold, or the deadline to pass without the threshold being met."],
+  contradictionRules: ["Estimates and commentary never outweigh the official value or final result table."],
+  escalationRules: ["Escalate when the official measurement source or threshold methodology is unclear."]
+});
+
 const POLICY_PACKS: PolicyPack[] = [
   DEFAULT_PACK,
+  DEFAULT_WINNER_PACK,
+  DEFAULT_RELEASE_PACK,
+  DEFAULT_LEGAL_PACK,
+  DEFAULT_REGULATORY_PACK,
+  DEFAULT_NUMERIC_THRESHOLD_PACK,
   makePack({
     id: "politics-appointment",
     category: "politics",

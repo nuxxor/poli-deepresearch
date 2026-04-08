@@ -29,7 +29,11 @@ const OFFICIAL_DOMAIN_RULES: OfficialDomainRule[] = [
   { pattern: /\bsec\b|\bsecurities and exchange commission\b/i, domains: ["sec.gov", "www.sec.gov"] },
   { pattern: /\bnasdaq\b/i, domains: ["nasdaq.com", "www.nasdaq.com"] },
   { pattern: /\bnyse\b|\bnew york stock exchange\b/i, domains: ["nyse.com", "www.nyse.com"] },
+  { pattern: /\bnhl\b|\bstanley cup\b/i, domains: ["nhl.com", "www.nhl.com", "api-web.nhle.com"] },
   { pattern: /\bnba\b/i, domains: ["nba.com", "www.nba.com"] },
+  { pattern: /\bnfl\b|\bsuper bowl\b/i, domains: ["nfl.com", "www.nfl.com"] },
+  { pattern: /\bmlb\b|\bworld series\b/i, domains: ["mlb.com", "www.mlb.com"] },
+  { pattern: /\bfifa\b|\bworld cup\b/i, domains: ["fifa.com", "www.fifa.com"] },
   { pattern: /\bufc\b/i, domains: ["ufc.com", "www.ufc.com"] },
   { pattern: /\bairbnb investors\b|\binvestors\.airbnb\.com\b/i, domains: ["investors.airbnb.com"] },
   { pattern: /\bfred\b|\bst\. louis fed\b|\bfederal reserve economic data\b/i, domains: ["fred.stlouisfed.org"] },
@@ -47,6 +51,22 @@ const GTA_VI_COMPARATOR_DOMAINS = new Set([
   "www.rockstargames.com",
   "take2games.com",
   "www.take2games.com"
+]);
+
+const SPORTS_OFFICIAL_HOSTS = new Set([
+  "nhl.com",
+  "www.nhl.com",
+  "api-web.nhle.com",
+  "nba.com",
+  "www.nba.com",
+  "nfl.com",
+  "www.nfl.com",
+  "mlb.com",
+  "www.mlb.com",
+  "fifa.com",
+  "www.fifa.com",
+  "ufc.com",
+  "www.ufc.com"
 ]);
 
 export function cleanResolutionTopic(title: string): string {
@@ -156,11 +176,24 @@ export function isOfficialUrlForMarket(url: string, market: MarketContext): bool
     hostname === "www.sec.gov" ||
     hostname === "whitehouse.gov" ||
     hostname === "www.whitehouse.gov" ||
+    hostname === "nhl.com" ||
+    hostname === "www.nhl.com" ||
+    hostname === "api-web.nhle.com" ||
     hostname === "nba.com" ||
     hostname === "www.nba.com" ||
+    hostname === "nfl.com" ||
+    hostname === "www.nfl.com" ||
+    hostname === "mlb.com" ||
+    hostname === "www.mlb.com" ||
+    hostname === "fifa.com" ||
+    hostname === "www.fifa.com" ||
     hostname === "ufc.com" ||
     hostname === "www.ufc.com"
   ) {
+    return true;
+  }
+
+  if (market.canonicalMarket.category === "sports" && SPORTS_OFFICIAL_HOSTS.has(hostname)) {
     return true;
   }
 

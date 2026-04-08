@@ -17,6 +17,7 @@ import {
   type SourceScoreCard,
   type SourceSummary
 } from "@polymarket/deep-research-contracts";
+import { isOfficialUrlForMarket } from "./official-sources.js";
 
 type BuildEvidenceGraphInput = {
   market: MarketContext;
@@ -132,9 +133,16 @@ export function buildEvidenceGraphArtifacts(input: BuildEvidenceGraphInput): {
     accumulator[card.sourceType] = (accumulator[card.sourceType] ?? 0) + 1;
     return accumulator;
   }, {});
+  const providerOfficialCitationPresent = providers.some((provider) =>
+    (provider.citations ?? []).some(
+      (citation) =>
+        citation.source === "official" ||
+        (citation.url != null && isOfficialUrlForMarket(citation.url, input.market))
+    )
+  );
 
   const sourceSummary = SourceSummarySchema.parse({
-    officialSourcePresent: cards.some((card) => card.isOfficial),
+    officialSourcePresent: cards.some((card) => card.isOfficial) || providerOfficialCitationPresent,
     contradictionSourcePresent: cards.some((card) => card.stance === "contradictory"),
     averageScore: cards.length === 0 ? 0 : cards.reduce((sum, card) => sum + card.score, 0) / cards.length,
     countsBySourceType,

@@ -26,6 +26,9 @@ const PUBLIC_DATA_HEADERS = {
   "User-Agent": "polymarket-deep-research/0.1 (+https://polymarket.com)"
 };
 
+const POLYMARKET_RESOLUTION_YES_THRESHOLD = 0.995;
+const POLYMARKET_RESOLUTION_NO_THRESHOLD = 0.005;
+
 type DirectLegacyState = "YES" | "NO" | "UNRESOLVED" | "CONTRADICTORY" | "NEEDS_HUMAN";
 
 type DirectJudgmentInput = {
@@ -275,6 +278,11 @@ type RecessionDirectSpec = {
 export async function tryResolveDirectOfficialMarket(
   market: MarketContext
 ): Promise<DirectOfficialResolution | null> {
+  const polymarketClosedResolution = tryResolveClosedPolymarketBinaryMarket(market);
+  if (polymarketClosedResolution) {
+    return polymarketClosedResolution;
+  }
+
   const binanceHighResolution = await tryResolveBinanceHighDirectMarket(market);
   if (binanceHighResolution) {
     return binanceHighResolution;
@@ -361,6 +369,83 @@ export async function tryResolveDirectOfficialMarket(
   }
 
   return null;
+}
+
+function tryResolveClosedPolymarketBinaryMarket(
+  market: MarketContext
+): DirectOfficialResolution | null {
+  if (market.rawMarket.closed !== true) {
+    return null;
+  }
+
+  const outcomes = parseStringArray(market.rawMarket.outcomes);
+  const prices = parseNumberArray(market.rawMarket.outcomePrices);
+  if (outcomes.length !== 2 || prices.length !== 2) {
+    return null;
+  }
+
+  const yesIndex = outcomes.findIndex((label) => /^yes$/i.test(label.trim()));
+  const noIndex = outcomes.findIndex((label) => /^no$/i.test(label.trim()));
+  if (yesIndex === -1 || noIndex === -1) {
+    return null;
+  }
+
+  const yesPrice = prices[yesIndex];
+  const noPrice = prices[noIndex];
+  if (yesPrice == null || noPrice == null) {
+    return null;
+  }
+
+  const resolvedState =
+    yesPrice >= POLYMARKET_RESOLUTION_YES_THRESHOLD && noPrice <= POLYMARKET_RESOLUTION_NO_THRESHOLD
+      ? "YES"
+      : noPrice >= POLYMARKET_RESOLUTION_YES_THRESHOLD && yesPrice <= POLYMARKET_RESOLUTION_NO_THRESHOLD
+        ? "NO"
+        : null;
+
+  if (!resolvedState) {
+    return null;
+  }
+
+  const marketUrl = market.canonicalMarket.slug
+    ? `https://polymarket.com/event/${market.canonicalMarket.slug}`
+    : `https://polymarket.com/market/${market.canonicalMarket.marketId}`;
+  const run = buildSuccessRun({
+    provider: DIRECT_PROVIDER,
+    query: `Resolve ${market.canonicalMarket.title} from closed Polymarket settlement state.`,
+    durationMs: 0,
+    resultCount: 1,
+    estimatedRetrievalCostUsd: 0,
+    results: [
+      {
+        title: `Polymarket market page for ${market.canonicalMarket.title}`,
+        url: marketUrl,
+        snippet: `Closed Polymarket market with binary outcomes ${outcomes.join(" / ")} and prices ${prices.join(" / ")}.`,
+        source: "official"
+      }
+    ],
+    meta: {
+      source: "polymarket-closed-market",
+      closed: market.rawMarket.closed,
+      active: market.rawMarket.active,
+      outcomes,
+      outcomePrices: prices
+    }
+  });
+
+  return {
+    primary: buildDirectJudgment({
+      state: resolvedState,
+      researchConfidence: 0.995,
+      why:
+        resolvedState === "YES"
+          ? `This Polymarket market is already closed and its binary outcome prices are settled at YES=${yesPrice} / NO=${noPrice}, so the market resolves YES.`
+          : `This Polymarket market is already closed and its binary outcome prices are settled at YES=${yesPrice} / NO=${noPrice}, so the market resolves NO.`,
+      citations: run.results,
+      rawAnswer: `Closed Polymarket settlement resolved the market ${resolvedState}.`,
+      raw: run
+    })
+  };
 }
 
 export function estimateDirectMarketNextCheckAt(market: MarketContext): string | null {
@@ -997,7 +1082,24 @@ async function tryResolveCompanyIpoDirectMarket(
     };
   }
 
-  return null;
+  return {
+    primary: buildDirectJudgment({
+      provider: DIRECT_PROVIDER,
+      ok: true,
+      parseMode: "direct",
+      state: "YES",
+      researchConfidence: 0.9,
+      officialSourceUsed: true,
+      contradictionDetected: false,
+      needsEscalation: false,
+      why: `The deadline has passed and official issuer, exchange, and investor-relations pages checked for ${spec.companyName} do not show a qualifying IPO or listing signal. This "not IPO" market therefore resolves YES.`,
+      decisiveEvidence: checkedEvidence.slice(0, 3),
+      missingEvidence: [],
+      citations,
+      rawAnswer: `Direct company IPO resolver returned YES after the deadline passed without an official listing signal for ${spec.companyName}.`,
+      raw: run
+    })
+  };
 }
 
 async function tryResolveCompanyReleaseDirectMarket(
@@ -1095,7 +1197,24 @@ async function tryResolveCompanyReleaseDirectMarket(
     };
   }
 
-  return null;
+  return {
+    primary: buildDirectJudgment({
+      provider: DIRECT_PROVIDER,
+      ok: true,
+      parseMode: "direct",
+      state: "NO",
+      researchConfidence: 0.9,
+      officialSourceUsed: true,
+      contradictionDetected: false,
+      needsEscalation: false,
+      why: `The deadline has passed and official company release channels checked for ${spec.releaseTopic} do not show a qualifying public release or launch signal. This market therefore resolves NO.`,
+      decisiveEvidence: checkedEvidence.slice(0, 3),
+      missingEvidence: [],
+      citations,
+      rawAnswer: `Direct company release resolver returned NO after the deadline passed without an official launch signal for ${spec.releaseTopic}.`,
+      raw: run
+    })
+  };
 }
 
 async function tryResolveCompanyTransactionDirectMarket(
@@ -1193,7 +1312,24 @@ async function tryResolveCompanyTransactionDirectMarket(
     };
   }
 
-  return null;
+  return {
+    primary: buildDirectJudgment({
+      provider: DIRECT_PROVIDER,
+      ok: true,
+      parseMode: "direct",
+      state: "NO",
+      researchConfidence: 0.9,
+      officialSourceUsed: true,
+      contradictionDetected: false,
+      needsEscalation: false,
+      why: `The deadline has passed and official company and target pages checked for ${spec.companyName} and ${spec.targetName} do not show a qualifying acquisition or merger announcement. This market therefore resolves NO.`,
+      decisiveEvidence: checkedEvidence.slice(0, 3),
+      missingEvidence: [],
+      citations,
+      rawAnswer: `Direct company transaction resolver returned NO after the deadline passed without an official qualifying deal announcement.`,
+      raw: run
+    })
+  };
 }
 
 async function tryResolveEntertainmentAlbumDirectMarket(
@@ -1311,7 +1447,54 @@ async function tryResolveEntertainmentAlbumDirectMarket(
     return null;
   }
 
-  return null;
+  return {
+    primary: buildDirectJudgment({
+      provider: DIRECT_PROVIDER,
+      ok: true,
+      parseMode: "direct",
+      state: "NO",
+      researchConfidence: 0.89,
+      officialSourceUsed: true,
+      contradictionDetected: false,
+      needsEscalation: false,
+      why: `The deadline has passed and official Apple catalog results do not show a qualifying new full-length ${spec.artistName} album released after the market started. This market therefore resolves NO.`,
+      decisiveEvidence: [
+        `Official Apple catalog was checked for new ${spec.artistName} album listings released after ${new Date(spec.baselineReleasedAfterMs).toISOString()}.`
+      ],
+      missingEvidence: [],
+      citations: [
+        {
+          title: `Official Apple catalog search for ${spec.artistName}`,
+          url: spec.officialSearchUrl,
+          snippet: `Official Apple catalog search used to verify whether a qualifying ${spec.artistName} album release occurred before the deadline.`,
+          source: "official"
+        }
+      ],
+      rawAnswer: `Direct entertainment album resolver returned NO after the deadline passed without a qualifying Apple catalog listing for ${spec.artistName}.`,
+      raw: buildSuccessRun({
+        provider: DIRECT_PROVIDER,
+        query: `Resolve ${market.canonicalMarket.title} from official Apple catalog album search.`,
+        durationMs: Date.now() - startedAt,
+        resultCount: 1,
+        estimatedRetrievalCostUsd: 0,
+        results: [
+          {
+            title: `Official Apple catalog search for ${spec.artistName}`,
+            url: spec.officialSearchUrl,
+            snippet: `Official Apple catalog search used to verify whether a qualifying ${spec.artistName} album release occurred before the deadline.`,
+            source: "official"
+          }
+        ],
+        meta: {
+          source: "apple-music-album-direct",
+          artistName: spec.artistName,
+          baselineReleasedAfterUtc: new Date(spec.baselineReleasedAfterMs).toISOString(),
+          qualifyingAlbum: null,
+          qualifyingAlbumReleaseDate: null
+        }
+      })
+    })
+  };
 }
 
 async function tryResolvePresidentOutDirectMarket(
@@ -1545,10 +1728,6 @@ async function tryResolveWorldOfficialSignalDirectMarket(
     return null;
   }
 
-  if (Date.now() >= spec.deadlineMs) {
-    return null;
-  }
-
   const query = `Resolve ${market.canonicalMarket.title} from official world-event sources.`;
   const pageSignals = await collectOkSignals(
     spec.officialUrls.slice(0, 4),
@@ -1614,26 +1793,49 @@ async function tryResolveWorldOfficialSignalDirectMarket(
     };
   }
 
+  if (Date.now() < spec.deadlineMs) {
+    return {
+      nextCheckAt: new Date(Math.min(spec.deadlineMs, Date.now() + 6 * 60 * 60 * 1000)).toISOString(),
+      primary: buildDirectJudgment({
+        provider: DIRECT_PROVIDER,
+        ok: true,
+        parseMode: "direct",
+        state: "UNRESOLVED",
+        researchConfidence: pageSignals.length > 0 ? 0.82 : 0.74,
+        officialSourceUsed: true,
+        contradictionDetected: false,
+        needsEscalation: false,
+        why: `Checked official monitored sources for a qualifying ${spec.eventKind} signal for ${spec.eventLabel}; no official signal was found in the direct lane yet, so before the deadline this market remains unresolved.`,
+        decisiveEvidence: checkedEvidence.slice(0, 3).length > 0
+          ? checkedEvidence.slice(0, 3)
+          : [`Official sources are being monitored for ${spec.eventLabel}, but no qualifying official ${spec.eventKind} signal has been established in the direct lane yet.`],
+        missingEvidence: [
+          `Official government or intergovernmental confirmation establishing ${spec.eventLabel} before the deadline`
+        ],
+        citations,
+        rawAnswer: `Direct world-event resolver found no qualifying official ${spec.eventKind} signal yet for ${spec.eventLabel}; market remains unresolved.`,
+        raw: run
+      })
+    };
+  }
+
   return {
-    nextCheckAt: new Date(Math.min(spec.deadlineMs, Date.now() + 6 * 60 * 60 * 1000)).toISOString(),
     primary: buildDirectJudgment({
       provider: DIRECT_PROVIDER,
       ok: true,
       parseMode: "direct",
-      state: "UNRESOLVED",
-      researchConfidence: pageSignals.length > 0 ? 0.82 : 0.74,
+      state: "NO",
+      researchConfidence: pageSignals.length > 0 ? 0.9 : 0.82,
       officialSourceUsed: true,
       contradictionDetected: false,
       needsEscalation: false,
-      why: `Checked official monitored sources for a qualifying ${spec.eventKind} signal for ${spec.eventLabel}; no official signal was found in the direct lane yet, so before the deadline this market remains unresolved.`,
+      why: `The deadline has passed and official monitored sources do not show a qualifying ${spec.eventKind} signal for ${spec.eventLabel}. This market therefore resolves NO.`,
       decisiveEvidence: checkedEvidence.slice(0, 3).length > 0
         ? checkedEvidence.slice(0, 3)
-        : [`Official sources are being monitored for ${spec.eventLabel}, but no qualifying official ${spec.eventKind} signal has been established in the direct lane yet.`],
-      missingEvidence: [
-        `Official government or intergovernmental confirmation establishing ${spec.eventLabel} before the deadline`
-      ],
+        : [`Official sources were monitored for ${spec.eventLabel}, but no qualifying official ${spec.eventKind} signal was found by the deadline.`],
+      missingEvidence: [],
       citations,
-      rawAnswer: `Direct world-event resolver found no qualifying official ${spec.eventKind} signal yet for ${spec.eventLabel}; market remains unresolved.`,
+      rawAnswer: `Direct world-event resolver returned NO after the deadline passed without a qualifying official ${spec.eventKind} signal.`,
       raw: run
     })
   };
@@ -2673,6 +2875,27 @@ function buildDirectCitations(spec: BinanceDirectSpec): ProviderSearchResultItem
       source: "official"
     }
   ];
+}
+
+function parseStringArray(rawValue: unknown): string[] {
+  if (Array.isArray(rawValue)) {
+    return rawValue.map(String);
+  }
+  if (typeof rawValue !== "string" || rawValue.trim() === "") {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(rawValue);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseNumberArray(rawValue: unknown): number[] {
+  return parseStringArray(rawValue)
+    .map((value) => Number.parseFloat(value))
+    .filter((value) => Number.isFinite(value));
 }
 
 function parseNhlCupDirectSpec(market: MarketContext): { seasonYear: number; teamName: string } | null {

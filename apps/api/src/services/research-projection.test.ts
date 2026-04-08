@@ -344,3 +344,23 @@ test("buildResearchGuardrails marks direct resolved official checks as decisive"
   assert.equal(guardrails.decisiveEvidenceStatus, "decisive_yes");
   assert.equal(guardrails.actionability, "high_conviction");
 });
+
+test("buildResearchGuardrails keeps resolved local-only outputs cautious without decisive evidence", () => {
+  const response = makeResponse();
+  response.final = makeOpinion({
+    resolutionStatus: "RESOLVED_YES",
+    resolutionConfidence: 0.91,
+    lean: "STRONG_YES",
+    leanConfidence: 0.91,
+    why: "Model thinks the event happened."
+  });
+  response.sourceSummary = {
+    ...response.sourceSummary!,
+    officialSourcePresent: false
+  };
+
+  const guardrails = buildResearchGuardrails(response);
+
+  assert.equal(guardrails.actionability, "abstain");
+  assert.ok(guardrails.reasons.includes("official_source_missing"));
+});

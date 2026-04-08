@@ -159,7 +159,15 @@ export function buildResearchGuardrails(response: MarketResearchResponse): Resea
 
   const actionability =
     response.final.resolutionStatus !== "NOT_YET_RESOLVED"
-      ? "high_conviction"
+      ? decisiveEvidenceStatus === "decisive_yes" || decisiveEvidenceStatus === "decisive_no"
+        ? "high_conviction"
+        : reasons.has("official_source_missing") || reasons.has("local_only_mode")
+          ? "abstain"
+          : decisiveEvidenceStatus === "conflicting" || decisiveEvidenceStatus === "official_inconclusive"
+            ? "monitor"
+            : effectiveConfidence >= 0.72 && !reasons.has("contradictory_evidence_present")
+              ? "high_conviction"
+              : "monitor"
       : response.market.canonicalMarket.officialSourceRequired &&
           (decisiveEvidenceStatus === "secondary_only" || decisiveEvidenceStatus === "none")
         ? "abstain"
