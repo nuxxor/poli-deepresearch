@@ -50,45 +50,37 @@ This makes the repo more like a domain-specific inference engine than a generic 
 ### System map
 
 ```mermaid
-flowchart LR
-    PM[Polymarket market page]
-    EXT[Browser sidepanel]
-    API[Fastify API]
+flowchart TD
+    PM[Polymarket page] --> EXT[Extension sidepanel]
+    EXT -->|product request| API[Fastify API]
 
-    subgraph CORE[Research core]
+    subgraph CORE[Research pipeline]
         CAN[CanonicalMarket]
         RC[ResolutionContract]
         POLICY[Policy pack]
         PLAN[Query plan]
         LANES[Research lanes]
-        EVID[Evidence, claims, graph]
+        EVID[Evidence + claims + graph]
         REVIEW[Adversarial review]
         FORECAST[Forecast + calibration]
         VIEW[ResearchView + guardrails]
     end
 
-    PM --> EXT
-    EXT -->|product request| API
-    API --> CAN --> RC --> POLICY --> PLAN --> LANES --> EVID --> REVIEW --> FORECAST --> VIEW
+    API --> CAN
+    CAN --> RC --> POLICY --> PLAN --> LANES --> EVID --> REVIEW --> FORECAST --> VIEW
     VIEW --> EXT
 ```
 
 ### Runtime surfaces
 
 ```mermaid
-flowchart LR
-    RUN[Full research run artifact]
-    PROJECT[Projection layer]
-    PRODUCT["/product endpoints"]
-    LATEST["/latest endpoints"]
-    UI[Extension UI]
-    DEBUG[Replay, debug, eval]
-
-    RUN --> PROJECT
-    PROJECT --> PRODUCT
-    RUN --> LATEST
-    PRODUCT --> UI
-    LATEST --> DEBUG
+flowchart TD
+    RUN[Full research run]
+    RUN --> PROJECT[Projection layer]
+    RUN --> LATEST["/latest endpoints"]
+    PROJECT --> PRODUCT["/product endpoints"]
+    PRODUCT --> UI[Extension UI]
+    LATEST --> DEBUG[Replay + debug + eval]
 ```
 
 ## Repository Layout
@@ -111,22 +103,19 @@ flowchart LR
 flowchart TD
     ROOT[poli-deepresearch]
 
-    ROOT --> APPS[apps]
-    ROOT --> PACKAGES[packages]
-    ROOT --> EVALS[evals]
-
-    APPS --> API[apps/api<br/>Fastify backend]
-    APPS --> EXT[apps/extension<br/>browser sidepanel]
+    ROOT --> API[apps/api<br/>backend]
+    ROOT --> EXT[apps/extension<br/>sidepanel]
+    ROOT --> CONTRACTS[packages/contracts<br/>shared Zod contracts]
+    ROOT --> EVALS[evals<br/>gold datasets]
 
     API --> RESEARCH[research.ts<br/>top-level orchestration]
-    API --> STAGES[research-stages.ts<br/>planner/evidence/signal helpers]
+    API --> STAGES[research-stages.ts<br/>stage helpers]
     API --> POLICY[policies.ts<br/>policy packs]
     API --> RESOLUTION[resolution-contract.ts<br/>resolution semantics]
-    API --> EVIDENCE[evidence-semantics.ts<br/>decisive evidence + reconcile]
+    API --> EVIDENCE[evidence-semantics.ts<br/>evidence reconcile]
     API --> FORECAST[probabilistic-forecast.ts<br/>forecast layer]
 
-    PACKAGES --> CONTRACTS[packages/contracts<br/>shared Zod contracts]
-    EVALS --> GOLD[resolved gold datasets<br/>v1 / v2 / v3]
+    EVALS --> GOLD[v1 / v2 / v3]
 ```
 
 ## Architecture Highlights
