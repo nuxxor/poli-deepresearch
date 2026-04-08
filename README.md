@@ -45,6 +45,52 @@ The system is centered around a typed research pipeline:
 
 This makes the repo more like a domain-specific inference engine than a generic agent wrapper.
 
+## Visual Overview
+
+### System map
+
+```mermaid
+flowchart LR
+    PM[Polymarket market page]
+    EXT[Browser sidepanel]
+    API[Fastify API]
+
+    subgraph CORE[Research core]
+        CAN[CanonicalMarket]
+        RC[ResolutionContract]
+        POLICY[Policy pack]
+        PLAN[Query plan]
+        LANES[Research lanes]
+        EVID[Evidence, claims, graph]
+        REVIEW[Adversarial review]
+        FORECAST[Forecast + calibration]
+        VIEW[ResearchView + guardrails]
+    end
+
+    PM --> EXT
+    EXT -->|product request| API
+    API --> CAN --> RC --> POLICY --> PLAN --> LANES --> EVID --> REVIEW --> FORECAST --> VIEW
+    VIEW --> EXT
+```
+
+### Runtime surfaces
+
+```mermaid
+flowchart LR
+    RUN[Full research run artifact]
+    PROJECT[Projection layer]
+    PRODUCT[/product endpoints]
+    LATEST[/latest endpoints]
+    UI[Extension UI]
+    DEBUG[Replay, debug, eval]
+
+    RUN --> PROJECT
+    PROJECT --> PRODUCT
+    RUN --> LATEST
+    PRODUCT --> UI
+    LATEST --> DEBUG
+```
+
 ## Repository Layout
 
 ```text
@@ -57,6 +103,30 @@ This makes the repo more like a domain-specific inference engine than a generic 
 ├─ evals/          # Gold evaluation dataset(s)
 ├─ package.json
 └─ README.md
+```
+
+### Repository map
+
+```mermaid
+flowchart TD
+    ROOT[poli-deepresearch]
+
+    ROOT --> APPS[apps]
+    ROOT --> PACKAGES[packages]
+    ROOT --> EVALS[evals]
+
+    APPS --> API[apps/api<br/>Fastify backend]
+    APPS --> EXT[apps/extension<br/>browser sidepanel]
+
+    API --> RESEARCH[research.ts<br/>top-level orchestration]
+    API --> STAGES[research-stages.ts<br/>planner/evidence/signal helpers]
+    API --> POLICY[policies.ts<br/>policy packs]
+    API --> RESOLUTION[resolution-contract.ts<br/>resolution semantics]
+    API --> EVIDENCE[evidence-semantics.ts<br/>decisive evidence + reconcile]
+    API --> FORECAST[probabilistic-forecast.ts<br/>forecast layer]
+
+    PACKAGES --> CONTRACTS[packages/contracts<br/>shared Zod contracts]
+    EVALS --> GOLD[resolved gold datasets<br/>v1 / v2 / v3]
 ```
 
 ## Architecture Highlights
