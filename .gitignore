@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+
+.cache/
+.claude/
+.data/
+node_modules/
+
+apps/api/dist/
+apps/extension/dist/
+packages/contracts/dist/
+
+benchmarks/
+evals/reports/
+
+.DS_Store

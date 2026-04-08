@@ -1,0 +1,28 @@
+{
+  "name": "@polymarket/deep-research",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build:contracts": "npm --workspace packages/contracts run build",
+    "build:api": "npm --workspace apps/api run build",
+    "build:extension": "npm --workspace apps/extension run build",
+    "build": "npm run build:contracts && npm run build:api && npm run build:extension",
+    "dev:api": "npm --workspace apps/api run dev",
+    "test:api": "npm run build:contracts && npm --workspace apps/api run test",
+    "benchmark:providers": "npm run build:contracts && npm --workspace apps/api run benchmark:providers --",
+    "benchmark:business-tech": "npm run build:contracts && npm --workspace apps/api run benchmark:business-tech --",
+    "benchmark:live": "npm run build:contracts && npm --workspace apps/api run benchmark:live --",
+    "benchmark:holdout": "npm run build:contracts && npm --workspace apps/api run benchmark:holdout --",
+    "eval:gold": "npm run build:contracts && npm --workspace apps/api run eval:gold --",
+    "test:prompts": "npm run build:contracts && npm --workspace apps/api run prompt:regression --"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

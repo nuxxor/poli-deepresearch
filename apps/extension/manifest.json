@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Polymarket Deep Research",
+  "version": "0.1.0",
+  "description": "Resolution-aware research panel for Polymarket markets.",
+  "permissions": [
+    "activeTab",
+    "sidePanel",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://polymarket.com/*",
+    "https://*.polymarket.com/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://polymarket.com/*",
+        "https://*.polymarket.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Open Deep Research"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}

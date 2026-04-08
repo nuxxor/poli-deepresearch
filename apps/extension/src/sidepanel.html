@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Polymarket Deep Research</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="hero">
+        <p class="eyebrow">Polymarket Deep Research</p>
+        <h1>Opinionated research copilot</h1>
+        <p class="subcopy">
+          Cited yes-case, no-case, historical context, and analyst takes for live markets.
+        </p>
+      </header>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>API</h2>
+          <span id="health-badge" class="badge muted">Checking</span>
+        </div>
+        <p id="health-copy" class="mono">http://127.0.0.1:4010/v1/health</p>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Current Page</h2>
+          <button id="refresh-button" class="button" type="button">Refresh</button>
+        </div>
+        <dl class="meta-list">
+          <div>
+            <dt>URL</dt>
+            <dd id="page-url" class="mono">-</dd>
+          </div>
+          <div>
+            <dt>Slug</dt>
+            <dd id="page-slug" class="mono">-</dd>
+          </div>
+          <div>
+            <dt>Heading</dt>
+            <dd id="page-heading">-</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Resolved Market Context</h2>
+          <span id="context-badge" class="badge muted">Idle</span>
+        </div>
+        <dl class="meta-list">
+          <div>
+            <dt>Condition ID</dt>
+            <dd id="condition-id" class="mono">-</dd>
+          </div>
+          <div>
+            <dt>Category</dt>
+            <dd id="market-category">-</dd>
+          </div>
+          <div>
+            <dt>Archetype</dt>
+            <dd id="market-archetype">-</dd>
+          </div>
+          <div>
+            <dt>Policy Pack</dt>
+            <dd id="market-policy-pack">-</dd>
+          </div>
+          <div>
+            <dt>Tokens</dt>
+            <dd id="market-tokens" class="mono">-</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Research Run</h2>
+          <button id="research-button" class="button" type="button">Run Research</button>
+        </div>
+        <div class="card-header compact">
+          <span>Pipeline</span>
+          <span id="research-badge" class="badge muted">Idle</span>
+        </div>
+
+        <div class="research-summary">
+          <section class="opinion-panel">
+            <p class="summary-kicker">Analyst View</p>
+            <p id="research-lean-headline" class="verdict-state">-</p>
+            <p id="research-lean-confidence" class="verdict-subline">-</p>
+            <div class="lean-meter" aria-label="Lean meter">
+              <div class="lean-meter-track">
+                <span class="lean-meter-tick" data-tick="STRONG_NO"></span>
+                <span class="lean-meter-tick" data-tick="LEAN_NO"></span>
+                <span class="lean-meter-tick" data-tick="TOSSUP"></span>
+                <span class="lean-meter-tick" data-tick="LEAN_YES"></span>
+                <span class="lean-meter-tick" data-tick="STRONG_YES"></span>
+                <div id="lean-meter-marker" class="lean-meter-marker"></div>
+              </div>
+              <div class="lean-meter-labels">
+                <span>Strong No</span>
+                <span>Lean No</span>
+                <span>Tossup</span>
+                <span>Lean Yes</span>
+                <span>Strong Yes</span>
+              </div>
+            </div>
+            <p id="research-resolution-status" class="verdict-footnote">-</p>
+          </section>
+
+          <div class="summary-grid">
+            <section class="summary-block summary-block-wide">
+              <p class="summary-kicker">Market vs System</p>
+              <div class="view-grid">
+                <div>
+                  <dt>Lean</dt>
+                  <dd id="research-system-lean">-</dd>
+                </div>
+                <div>
+                  <dt>System Odds</dt>
+                  <dd id="research-system-odds">-</dd>
+                </div>
+                <div>
+                  <dt>Market Odds</dt>
+                  <dd id="research-market-odds">-</dd>
+                </div>
+                <div>
+                  <dt>Edge vs Market</dt>
+                  <dd id="research-edge">-</dd>
+                </div>
+              </div>
+              <p id="research-view-rationale" class="summary-copy summary-spaced">-</p>
+            </section>
+
+            <section class="summary-block summary-block-wide">
+              <p class="summary-kicker">Why this lean</p>
+              <p id="research-why" class="summary-copy">-</p>
+            </section>
+
+            <section class="summary-block">
+              <p class="summary-kicker">Forecast Engine</p>
+              <dl class="meta-list">
+                <div>
+                  <dt>Probability Source</dt>
+                  <dd id="research-probability-source">-</dd>
+                </div>
+                <div>
+                  <dt>Posterior</dt>
+                  <dd id="research-posterior-odds">-</dd>
+                </div>
+                <div>
+                  <dt>Calibrated</dt>
+                  <dd id="research-calibrated-odds">-</dd>
+                </div>
+                <div>
+                  <dt>Calibration</dt>
+                  <dd id="research-calibration">-</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="summary-block">
+              <p class="summary-kicker">Adversarial Review</p>
+              <p id="research-adversarial-status" class="summary-copy">-</p>
+              <ul id="research-adversarial-notes" class="summary-list">
+                <li>No adversarial review yet.</li>
+              </ul>
+            </section>
+
+            <section class="summary-block">
+              <p id="research-yes-headline" class="summary-kicker">Yes Case</p>
+              <ul id="research-yes-case" class="summary-list">
+                <li>No yes-side case yet.</li>
+              </ul>
+            </section>
+
+            <section class="summary-block">
+              <p id="research-no-headline" class="summary-kicker">No Case</p>
+              <ul id="research-no-case" class="summary-list">
+                <li>No no-side case yet.</li>
+              </ul>
+            </section>
+
+            <section class="summary-block summary-block-wide">
+              <p class="summary-kicker">Historical Context</p>
+              <p id="research-historical-narrative" class="summary-copy">-</p>
+              <ul id="research-historical-priors" class="summary-list">
+                <li>No priors surfaced yet.</li>
+              </ul>
+            </section>
+
+            <section class="summary-block summary-block-wide">
+              <p class="summary-kicker">What To Watch</p>
+              <ul id="research-what-to-watch" class="summary-list">
+                <li>No watch items yet.</li>
+              </ul>
+              <p id="research-next-check" class="summary-copy summary-spaced">-</p>
+            </section>
+
+            <section class="summary-block summary-block-wide">
+              <p class="summary-kicker">Model Takes</p>
+              <div class="model-takes">
+                <article class="model-take-card">
+                  <h3>Parallel</h3>
+                  <p id="research-model-take">-</p>
+                </article>
+                <article class="model-take-card">
+                  <h3>xAI</h3>
+                  <p id="research-second-model-take">-</p>
+                </article>
+              </div>
+            </section>
+
+            <section class="summary-block summary-block-wide">
+              <p class="summary-kicker">Best Sources</p>
+              <ul id="research-best-sources" class="summary-list">
+                <li>No source ranking yet.</li>
+              </ul>
+            </section>
+
+            <section class="summary-block summary-block-wide">
+              <p class="summary-kicker">Related Markets</p>
+              <p id="research-cross-market-summary" class="summary-copy">-</p>
+              <ul id="research-cross-market-list" class="summary-list">
+                <li>No related market context yet.</li>
+              </ul>
+            </section>
+
+            <section class="summary-block summary-block-wide">
+              <p class="summary-kicker">Research Note</p>
+              <div id="research-note" class="research-note">
+                <p>No narrative note yet.</p>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div class="citations diagnostics internal">
+          <p class="citations-title">Internal Details</p>
+          <dl class="meta-list compact-meta">
+            <div>
+              <dt>Final Mode</dt>
+              <dd id="research-final-mode">-</dd>
+            </div>
+            <div>
+              <dt>Parallel Run</dt>
+              <dd id="research-parallel-run">-</dd>
+            </div>
+            <div>
+              <dt>xAI Run</dt>
+              <dd id="research-xai-run">-</dd>
+            </div>
+            <div>
+              <dt>Direct Run</dt>
+              <dd id="research-direct-run">-</dd>
+            </div>
+            <div>
+              <dt>Local Opinion Run</dt>
+              <dd id="research-local-run">-</dd>
+            </div>
+            <div>
+              <dt>Cost</dt>
+              <dd id="research-cost">-</dd>
+            </div>
+            <div>
+              <dt>Cache</dt>
+              <dd id="research-cache">-</dd>
+            </div>
+            <div>
+              <dt>Evidence Docs</dt>
+              <dd id="research-evidence-count">-</dd>
+            </div>
+            <div>
+              <dt>Claims</dt>
+              <dd id="research-claim-count">-</dd>
+            </div>
+            <div>
+              <dt>Avg Source Score</dt>
+              <dd id="research-source-score">-</dd>
+            </div>
+            <div>
+              <dt>Graph</dt>
+              <dd id="research-graph">-</dd>
+            </div>
+            <div>
+              <dt>Signals</dt>
+              <dd id="research-signals">-</dd>
+            </div>
+            <div>
+              <dt>Macro Official</dt>
+              <dd id="research-macro-official">-</dd>
+            </div>
+            <div>
+              <dt>Planner</dt>
+              <dd id="research-planner">-</dd>
+            </div>
+            <div>
+              <dt>Trusted Source Mix</dt>
+              <dd id="research-official-sources">-</dd>
+            </div>
+          </dl>
+          <ul id="research-official-items" class="summary-list diagnostics-list">
+            <li>No trusted sources surfaced yet.</li>
+          </ul>
+        </div>
+
+        <div class="citations">
+          <p class="citations-title">Source Notes</p>
+          <ul id="research-citations" class="todo-list">
+            <li>No research run yet.</li>
+          </ul>
+        </div>
+        <div class="citations internal">
+          <p class="citations-title">Extracted Evidence</p>
+          <ul id="research-evidence" class="todo-list">
+            <li>No evidence extracted yet.</li>
+          </ul>
+        </div>
+        <div class="citations internal">
+          <p class="citations-title">Claims</p>
+          <ul id="research-claims" class="todo-list">
+            <li>No claims extracted yet.</li>
+          </ul>
+        </div>
+        <div class="citations internal">
+          <p class="citations-title">Offline Summary</p>
+          <ul id="research-summary-items" class="todo-list">
+            <li>No offline summary yet.</li>
+          </ul>
+        </div>
+        <div class="citations internal">
+          <p class="citations-title">Signals</p>
+          <ul id="research-signal-items" class="todo-list">
+            <li>No signals fetched yet.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="sidepanel.js"></script>
+  </body>
+</html>

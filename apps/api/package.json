@@ -1,0 +1,26 @@
+{
+  "name": "@polymarket/deep-research-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "test": "tsx --test src/**/*.test.ts",
+    "start": "node dist/index.js",
+    "benchmark:providers": "tsx src/scripts/benchmark-providers.ts",
+    "benchmark:business-tech": "tsx src/scripts/benchmark-business-tech.ts",
+    "benchmark:live": "tsx src/scripts/benchmark-live-markets.ts",
+    "benchmark:holdout": "tsx src/scripts/benchmark-research-holdout.ts",
+    "eval:gold": "tsx src/scripts/eval-gold-set.ts",
+    "prompt:regression": "tsx src/scripts/prompt-regression.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@polymarket/deep-research-contracts": "file:../../packages/contracts",
+    "dotenv": "^16.6.1",
+    "fastify": "^5.6.1"
+  }
+}
