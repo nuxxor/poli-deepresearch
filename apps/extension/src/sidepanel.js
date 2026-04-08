@@ -1,4 +1,10 @@
-const API_BASE = "http://127.0.0.1:4010";
+import {
+  API_BASE,
+  fetchHealthStatus,
+  fetchMarketContext,
+  fetchResearchLatest,
+  fetchResearchProduct
+} from "./api-client.js";
 
 const healthBadge = document.querySelector("#health-badge");
 const healthCopy = document.querySelector("#health-copy");
@@ -26,6 +32,14 @@ const researchMarketOdds = document.querySelector("#research-market-odds");
 const researchEdge = document.querySelector("#research-edge");
 const researchViewRationale = document.querySelector("#research-view-rationale");
 const researchWhy = document.querySelector("#research-why");
+const researchActionability = document.querySelector("#research-actionability");
+const researchRunMode = document.querySelector("#research-run-mode");
+const researchConfidenceCap = document.querySelector("#research-confidence-cap");
+const researchGuardrailReasons = document.querySelector("#research-guardrail-reasons");
+const researchResolutionSubject = document.querySelector("#research-resolution-subject");
+const researchResolutionComparator = document.querySelector("#research-resolution-comparator");
+const researchResolutionAuthorities = document.querySelector("#research-resolution-authorities");
+const researchResolutionRules = document.querySelector("#research-resolution-rules");
 const researchProbabilitySource = document.querySelector("#research-probability-source");
 const researchPosteriorOdds = document.querySelector("#research-posterior-odds");
 const researchCalibratedOdds = document.querySelector("#research-calibrated-odds");
@@ -112,11 +126,7 @@ function inferSlug(rawUrl) {
 
 async function loadHealth() {
   try {
-    const response = await fetch(`${API_BASE}/v1/health`);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    const payload = await response.json();
+    const payload = await fetchHealthStatus();
     healthBadge.textContent = payload.status.toUpperCase();
     healthBadge.className = "badge ok";
     healthCopy.textContent = `${API_BASE}/v1/health`;
@@ -147,6 +157,14 @@ function clearResearch() {
   researchEdge.textContent = "-";
   researchViewRationale.textContent = "-";
   researchWhy.textContent = "-";
+  researchActionability.textContent = "-";
+  researchRunMode.textContent = "-";
+  researchConfidenceCap.textContent = "-";
+  researchGuardrailReasons.innerHTML = "<li>No guardrail reasons yet.</li>";
+  researchResolutionSubject.textContent = "-";
+  researchResolutionComparator.textContent = "-";
+  researchResolutionAuthorities.textContent = "-";
+  researchResolutionRules.innerHTML = "<li>No resolution rules yet.</li>";
   researchProbabilitySource.textContent = "-";
   researchPosteriorOdds.textContent = "-";
   researchCalibratedOdds.textContent = "-";
@@ -220,7 +238,10 @@ function formatUtcDateTime(value) {
 }
 
 function formatPct(value) {
-  return `${(Number(value ?? 0) * 100).toFixed(1)}%`;
+  if (value == null || !Number.isFinite(Number(value))) {
+    return "-";
+  }
+  return `${(Number(value) * 100).toFixed(1)}%`;
 }
 
 function formatLeanLabel(lean) {
@@ -276,12 +297,12 @@ function parseNumberArray(value) {
 }
 
 function deriveMarketOdds(payload) {
-  if (payload.marketOdds) {
+  if (payload?.marketOdds) {
     return payload.marketOdds;
   }
 
-  const outcomes = parseStringArray(payload.market?.rawMarket?.outcomes);
-  const prices = parseNumberArray(payload.market?.rawMarket?.outcomePrices);
+  const outcomes = parseStringArray(payload?.market?.rawMarket?.outcomes);
+  const prices = parseNumberArray(payload?.market?.rawMarket?.outcomePrices);
   let yesProbability;
   let noProbability;
 
@@ -312,6 +333,20 @@ function deriveMarketOdds(payload) {
     yesProbability,
     noProbability
   };
+}
+
+function renderListItems(target, items, emptyText, mapper) {
+  if (!Array.isArray(items) || items.length === 0) {
+    target.innerHTML = `<li>${emptyText}</li>`;
+    return;
+  }
+
+  target.innerHTML = "";
+  for (const item of items) {
+    const li = document.createElement("li");
+    mapper(li, item);
+    target.append(li);
+  }
 }
 
 function renderCaseList(target, caseObj, polarity) {
@@ -398,13 +433,14 @@ function renderModelTakes(opinion) {
 }
 
 function renderForecast(payload, researchView) {
-  const forecast = payload.probabilisticForecast;
-  const calibration = payload.calibrationSummary;
+  const forecast = payload?.probabilisticForecast;
+  const calibration = payload?.calibrationSummary;
 
   researchProbabilitySource.textContent = titleCaseWords(researchView?.probabilitySource ?? "opinion");
-  researchPosteriorOdds.textContent = forecast
-    ? formatProbabilityPair(forecast.posteriorYesProbability, 1 - forecast.posteriorYesProbability)
-    : "-";
+  researchPosteriorOdds.textContent =
+    forecast && forecast.posteriorYesProbability != null
+      ? formatProbabilityPair(forecast.posteriorYesProbability, 1 - forecast.posteriorYesProbability)
+      : "-";
   researchCalibratedOdds.textContent = forecast
     ? formatProbabilityPair(forecast.calibratedYesProbability, forecast.calibratedNoProbability)
     : "-";
@@ -417,12 +453,14 @@ function renderForecast(payload, researchView) {
   researchCalibration.textContent = [
     titleCaseWords(calibration.status),
     `${calibration.sampleSize} cases`,
-    `adj ${formatPct(calibration.adjustment)}`
-  ].join(" | ");
+    calibration.adjustment != null ? `adj ${formatPct(calibration.adjustment)}` : null
+  ]
+    .filter(Boolean)
+    .join(" | ");
 }
 
 function renderAdversarialReview(payload) {
-  const review = payload.adversarialReview;
+  const review = payload?.adversarialReview;
   if (!review) {
     researchAdversarialStatus.textContent = "No adversarial review.";
     researchAdversarialNotes.innerHTML = "<li>No adversarial review yet.</li>";
@@ -440,16 +478,13 @@ function renderAdversarialReview(payload) {
     return;
   }
 
-  researchAdversarialNotes.innerHTML = "";
-  for (const item of items.slice(0, 4)) {
-    const li = document.createElement("li");
+  renderListItems(researchAdversarialNotes, items.slice(0, 4), "No adversarial review detail yet.", (li, item) => {
     li.textContent = item;
-    researchAdversarialNotes.append(li);
-  }
+  });
 }
 
 function renderCrossMarketContext(payload) {
-  const context = payload.crossMarketContext;
+  const context = payload?.crossMarketContext;
   if (!context || !Array.isArray(context.markets) || context.markets.length === 0) {
     researchCrossMarketSummary.textContent = "No related market context yet.";
     researchCrossMarketList.innerHTML = "<li>No related market context yet.</li>";
@@ -484,6 +519,10 @@ function renderCrossMarketContext(payload) {
   }
 }
 
+function getTopSources(payload) {
+  return payload?.topSources ?? payload?.sourceSummary?.topSources ?? [];
+}
+
 function renderBestSources(payload) {
   const candidates = [];
   const seen = new Set();
@@ -497,11 +536,11 @@ function renderBestSources(payload) {
     candidates.push({ url, label });
   };
 
-  for (const item of payload.sourceSummary?.topSources ?? []) {
+  for (const item of getTopSources(payload)) {
     push(item.canonicalUrl, item.title ?? item.canonicalUrl);
   }
 
-  for (const item of payload.citations ?? []) {
+  for (const item of payload?.citations ?? []) {
     push(item.url, item.title ?? item.url);
   }
 
@@ -540,7 +579,7 @@ function renderTrustedSources(payload) {
     candidates.push({ url, title, meta });
   };
 
-  for (const item of payload.sourceSummary?.topSources ?? []) {
+  for (const item of getTopSources(payload)) {
     push(
       item.canonicalUrl,
       item.title ?? item.canonicalUrl,
@@ -548,7 +587,7 @@ function renderTrustedSources(payload) {
     );
   }
 
-  for (const item of payload.evidence ?? []) {
+  for (const item of payload?.evidence ?? []) {
     push(
       item.canonicalUrl ?? item.url,
       item.title ?? item.canonicalUrl ?? item.url,
@@ -620,7 +659,7 @@ function renderEvidence(items, sourceSummary) {
   }
 
   researchEvidence.innerHTML = "";
-  const topSources = new Map((sourceSummary?.topSources ?? []).map((item) => [item.docId, item]));
+  const topSources = new Map(((sourceSummary?.topSources ?? [])).map((item) => [item.docId, item]));
 
   for (const item of items) {
     const li = document.createElement("li");
@@ -686,78 +725,106 @@ function renderSignals(summary) {
 }
 
 function renderResearchNote(payload) {
-  const summary = payload.offlineSummary;
+  const summary = payload?.offlineSummary;
+  const narrative = payload?.narrative;
   researchNote.innerHTML = "";
 
-  if (!summary) {
+  if (!summary && !narrative) {
     const fallback = document.createElement("p");
-    fallback.textContent = payload.final?.why ?? "No narrative note yet.";
+    fallback.textContent = payload?.final?.why ?? "No narrative note yet.";
     researchNote.append(fallback);
     researchSummaryItems.innerHTML = "<li>No offline summary yet.</li>";
     return;
   }
 
-  if (summary.lede) {
-    const lede = document.createElement("p");
-    lede.className = "research-note-lede";
-    lede.textContent = summary.lede;
-    researchNote.append(lede);
-  }
-
-  for (const section of summary.sections ?? []) {
-    const block = document.createElement("section");
-    block.className = "research-note-section";
-
-    const heading = document.createElement("h3");
-    heading.className = "research-note-heading";
-    heading.textContent = section.heading;
-    block.append(heading);
-
-    const body = document.createElement("p");
-    body.textContent = section.body;
-    block.append(body);
-
-    if (Array.isArray(section.citations) && section.citations.length > 0) {
-      const refs = document.createElement("div");
-      refs.className = "case-sources";
-      refs.textContent = "Sources: ";
-
-      section.citations.slice(0, 3).forEach((citation, index) => {
-        if (index > 0) {
-          refs.append(" · ");
-        }
-        const anchor = document.createElement("a");
-        anchor.href = citation.url;
-        anchor.target = "_blank";
-        anchor.rel = "noreferrer";
-        anchor.textContent = citation.label;
-        refs.append(anchor);
-      });
-
-      block.append(refs);
+  if (summary) {
+    if (summary.lede) {
+      const lede = document.createElement("p");
+      lede.className = "research-note-lede";
+      lede.textContent = summary.lede;
+      researchNote.append(lede);
     }
 
-    researchNote.append(block);
+    for (const section of summary.sections ?? []) {
+      const block = document.createElement("section");
+      block.className = "research-note-section";
+
+      const heading = document.createElement("h3");
+      heading.className = "research-note-heading";
+      heading.textContent = section.heading;
+      block.append(heading);
+
+      const body = document.createElement("p");
+      body.textContent = section.body;
+      block.append(body);
+
+      if (Array.isArray(section.citations) && section.citations.length > 0) {
+        const refs = document.createElement("div");
+        refs.className = "case-sources";
+        refs.textContent = "Sources: ";
+
+        section.citations.slice(0, 3).forEach((citation, index) => {
+          if (index > 0) {
+            refs.append(" · ");
+          }
+          const anchor = document.createElement("a");
+          anchor.href = citation.url;
+          anchor.target = "_blank";
+          anchor.rel = "noreferrer";
+          anchor.textContent = citation.label;
+          refs.append(anchor);
+        });
+
+        block.append(refs);
+      }
+
+      researchNote.append(block);
+    }
+
+    if (summary.closing) {
+      const closing = document.createElement("p");
+      closing.className = "research-note-closing";
+      closing.textContent = summary.closing;
+      researchNote.append(closing);
+    }
+
+    researchSummaryItems.innerHTML = "";
+
+    if (summary.headline || summary.summary) {
+      const headline = document.createElement("li");
+      headline.textContent = `${summary.headline ?? ""}${summary.headline && summary.summary ? ": " : ""}${summary.summary ?? ""}`.trim();
+      if (headline.textContent) {
+        researchSummaryItems.append(headline);
+      }
+    }
+
+    for (const item of summary.watchItems ?? []) {
+      const li = document.createElement("li");
+      li.textContent = item;
+      researchSummaryItems.append(li);
+    }
+
+    if (researchSummaryItems.children.length === 0) {
+      researchSummaryItems.innerHTML = "<li>No offline summary yet.</li>";
+    }
+    return;
   }
 
-  if (summary.closing) {
-    const closing = document.createElement("p");
-    closing.className = "research-note-closing";
-    closing.textContent = summary.closing;
-    researchNote.append(closing);
-  }
+  const headline = document.createElement("p");
+  headline.className = "research-note-lede";
+  headline.textContent = narrative.headline;
+  researchNote.append(headline);
+
+  const summaryCopy = document.createElement("p");
+  summaryCopy.textContent = narrative.summary;
+  researchNote.append(summaryCopy);
 
   researchSummaryItems.innerHTML = "";
+  const first = document.createElement("li");
+  first.textContent = `${narrative.headline}: ${narrative.summary}`;
+  researchSummaryItems.append(first);
 
-  if (summary.headline || summary.summary) {
-    const headline = document.createElement("li");
-    headline.textContent = `${summary.headline ?? ""}${summary.headline && summary.summary ? ": " : ""}${summary.summary ?? ""}`.trim();
-    if (headline.textContent) {
-      researchSummaryItems.append(headline);
-    }
-  }
-
-  for (const item of summary.watchItems ?? []) {
+  for (const item of narrative.watchItems ?? []) {
     const li = document.createElement("li");
     li.textContent = item;
     researchSummaryItems.append(li);
@@ -791,83 +858,102 @@ function setLeanMeter(lean) {
   leanMeterMarker.className = `lean-meter-marker ${LEAN_CLASS[lean] ?? ""}`;
 }
 
-function applyResearch(payload) {
-  const opinion = payload.final ?? {};
-  const marketOdds = deriveMarketOdds(payload);
-  const researchView = payload.researchView ?? null;
-  const guardrails = payload.guardrails ?? null;
-  const displayLean = researchView?.lean ?? opinion.lean;
-  const displayConfidence = researchView?.leanConfidence ?? opinion.leanConfidence;
+function formatComparatorLabel(contract) {
+  if (!contract) {
+    return "-";
+  }
 
-  // Lean panel
-  researchLeanHeadline.textContent = formatLeanLabel(displayLean);
-  researchLeanHeadline.className = `verdict-state ${LEAN_CLASS[displayLean] ?? ""}`;
-  researchLeanConfidence.textContent = `Confidence ${formatPct(displayConfidence)}`;
-  researchResolutionStatus.textContent = `Resolution: ${titleCaseWords(opinion.resolutionStatus ?? "-")} (${formatPct(opinion.resolutionConfidence)})`;
-  setLeanMeter(displayLean);
+  const base = titleCaseWords(contract.comparator);
+  const threshold =
+    contract.thresholdValue != null
+      ? `${contract.metricName ? `${contract.metricName} ` : ""}${contract.thresholdValue}${contract.thresholdUnit ? ` ${contract.thresholdUnit}` : ""}`
+      : contract.metricName ?? null;
 
-  // Market vs System
-  researchSystemLean.textContent = researchView
-    ? formatLeanWithConfidence(researchView.lean, researchView.confidenceLabel)
-    : formatLeanLabel(opinion.lean);
-  researchSystemOdds.textContent = researchView
-    ? formatProbabilityPair(researchView.systemYesProbability, researchView.systemNoProbability)
+  return threshold ? `${base} | ${threshold}` : base;
+}
+
+function formatGuardrailReason(reason) {
+  return titleCaseWords(reason);
+}
+
+function renderGuardrails(payload) {
+  const guardrails = payload?.guardrails;
+  if (!guardrails) {
+    researchActionability.textContent = "-";
+    researchRunMode.textContent = "-";
+    researchConfidenceCap.textContent = "-";
+    researchGuardrailReasons.innerHTML = "<li>No guardrail reasons yet.</li>";
+    return;
+  }
+
+  researchActionability.textContent = titleCaseWords(guardrails.actionability);
+  researchRunMode.textContent = titleCaseWords(guardrails.runMode);
+  researchConfidenceCap.textContent = guardrails.confidenceCapApplied != null ? formatPct(guardrails.confidenceCapApplied) : "No cap";
+
+  renderListItems(
+    researchGuardrailReasons,
+    guardrails.reasons,
+    guardrails.degraded ? "Guardrails degraded without explicit reasons." : "No guardrail reasons yet.",
+    (li, reason) => {
+      li.textContent = formatGuardrailReason(reason);
+    }
+  );
+}
+
+function renderResolutionContract(payload) {
+  const contract = payload?.resolutionContract;
+  if (!contract) {
+    researchResolutionSubject.textContent = "-";
+    researchResolutionComparator.textContent = "-";
+    researchResolutionAuthorities.textContent = "-";
+    researchResolutionRules.innerHTML = "<li>No resolution rules yet.</li>";
+    return;
+  }
+
+  researchResolutionSubject.textContent = contract.subject || contract.eventLabel || "-";
+  researchResolutionComparator.textContent = formatComparatorLabel(contract);
+  researchResolutionAuthorities.textContent = contract.authorityKinds.map(titleCaseWords).join(", ");
+
+  const rules = [
+    `YES resolves when: ${contract.decisiveYesRule}`,
+    `NO resolves when: ${contract.decisiveNoRule}`,
+    contract.deadlineUtc ? `Deadline: ${formatUtcDateTime(contract.deadlineUtc)}` : null,
+    `Official source required: ${contract.officialSourceRequired ? "Yes" : "No"}`,
+    `Early NO allowed: ${contract.earlyNoAllowed ? "Yes" : "No"}`,
+    ...(contract.notes ?? [])
+  ].filter(Boolean);
+
+  renderListItems(researchResolutionRules, rules, "No resolution rules yet.", (li, rule) => {
+    li.textContent = rule;
+  });
+}
+
+function applyInternalDetails(payload) {
+  researchFinalMode.textContent = titleCaseWords(payload?.strategy?.finalMode);
+  researchParallelRun.textContent = formatProviderRunSummary(payload?.parallelRun);
+  researchXaiRun.textContent = formatProviderRunSummary(payload?.xaiRun);
+  researchDirectRun.textContent = formatProviderRunSummary(payload?.directRun);
+  researchLocalRun.textContent = formatProviderRunSummary(payload?.localOpinionRun);
+  researchCost.textContent = payload?.costs
+    ? `$${Number(payload.costs.totalUsd ?? 0).toFixed(4)} | ${payload.latencies?.totalMs ?? 0} ms`
     : "-";
-  researchMarketOdds.textContent = formatProbabilityPair(marketOdds.yesProbability, marketOdds.noProbability);
-  researchEdge.textContent = formatEdgeView(researchView);
-  researchViewRationale.textContent = researchView?.rationale ?? "-";
-  researchWhy.textContent = opinion.why ?? "-";
-  renderForecast(payload, researchView);
-  renderAdversarialReview(payload);
-
-  // Yes / No cases
-  researchYesHeadline.textContent = opinion.yesCase?.headline ?? "Yes Case";
-  researchNoHeadline.textContent = opinion.noCase?.headline ?? "No Case";
-  renderCaseList(researchYesCase, opinion.yesCase, "yes");
-  renderCaseList(researchNoCase, opinion.noCase, "no");
-
-  // Historical / Watch / Takes
-  renderHistoricalContext(opinion.historicalContext);
-  renderWhatToWatch(opinion.whatToWatch);
-  renderModelTakes(opinion);
-
-  // Best sources
-  renderBestSources(payload);
-  renderCrossMarketContext(payload);
-  researchOfficialSources.textContent = payload.sourceSummary
-    ? `${payload.sourceSummary.topSources?.length ?? 0} ranked sources`
-    : `${payload.citations?.length ?? 0} cited sources`;
-
-  // Next check
-  researchNextCheck.textContent = opinion.nextCheckAt
-    ? `Next recheck: ${formatUtcDateTime(opinion.nextCheckAt)}`
-    : "No scheduled recheck.";
-
-  // Research note (offline summary)
-  renderResearchNote(payload);
-
-  // Internal details
-  researchFinalMode.textContent = titleCaseWords(payload.strategy?.finalMode);
-  researchParallelRun.textContent = formatProviderRunSummary(payload.parallelRun);
-  researchXaiRun.textContent = formatProviderRunSummary(payload.xaiRun);
-  researchDirectRun.textContent = formatProviderRunSummary(payload.directRun);
-  researchLocalRun.textContent = formatProviderRunSummary(payload.localOpinionRun);
-  researchCost.textContent = `$${Number(payload.costs?.totalUsd ?? 0).toFixed(4)} | ${payload.latencies?.totalMs ?? 0} ms`;
-  researchCache.textContent = payload.cache?.hit
+  researchCache.textContent = payload?.cache?.hit
     ? `hit | expires ${payload.cache.expiresAt}`
-    : `miss | expires ${payload.cache?.expiresAt ?? "-"}`;
-  researchEvidenceCount.textContent = `${payload.evidence?.length ?? 0}`;
-  researchClaimCount.textContent = `${payload.claims?.length ?? 0}`;
-  researchSourceScore.textContent = payload.sourceSummary
+    : payload?.cache
+      ? `miss | expires ${payload.cache.expiresAt ?? "-"}`
+      : "-";
+  researchEvidenceCount.textContent = `${payload?.evidence?.length ?? 0}`;
+  researchClaimCount.textContent = `${payload?.claims?.length ?? 0}`;
+  researchSourceScore.textContent = payload?.sourceSummary
     ? `${Math.round((payload.sourceSummary.averageScore ?? 0) * 100)}%`
     : "-";
-  researchGraph.textContent = payload.evidenceGraph
+  researchGraph.textContent = payload?.evidenceGraph
     ? `${payload.evidenceGraph.nodes?.length ?? 0} nodes | ${payload.evidenceGraph.edges?.length ?? 0} edges`
     : "-";
-  researchSignals.textContent = payload.signals
+  researchSignals.textContent = payload?.signals
     ? `${payload.signals.totalItems} items | ${payload.signals.cacheHit ? "cache" : "fresh"}`
     : "-";
-  researchMacroOfficial.textContent = payload.macroOfficialContext
+  researchMacroOfficial.textContent = payload?.macroOfficialContext
     ? [
         payload.macroOfficialContext.seriesId,
         payload.macroOfficialContext.targetPeriodLabel
@@ -878,17 +964,74 @@ function applyResearch(payload) {
           : `threshold=${payload.macroOfficialContext.targetThresholdSatisfied ? "met" : "not_met"}`
       ].join(" | ")
     : "-";
-  researchPlanner.textContent = payload.localPlanner
+  researchPlanner.textContent = payload?.localPlanner
     ? `${payload.localPlanner.source}${payload.localPlanner.model ? ` | ${payload.localPlanner.model}` : ""}`
     : "-";
 
-  renderTrustedSources(payload);
-  renderCitations(payload.citations);
-  renderEvidence(payload.evidence, payload.sourceSummary);
-  renderClaims(payload.claims);
-  renderSignals(payload.signals);
+  renderEvidence(payload?.evidence, payload?.sourceSummary);
+  renderClaims(payload?.claims);
+  renderSignals(payload?.signals);
+}
 
-  // Badge
+function applyResearch(productPayload, debugPayload = null) {
+  const displayPayload = productPayload ?? debugPayload ?? {};
+  const evidencePayload = debugPayload ? { ...displayPayload, ...debugPayload } : displayPayload;
+  const opinion = displayPayload.final ?? {};
+  const marketOdds = deriveMarketOdds(displayPayload);
+  const researchView = displayPayload.researchView ?? null;
+  const guardrails = displayPayload.guardrails ?? null;
+  const displayLean = researchView?.lean ?? opinion.lean;
+  const displayConfidence = researchView?.leanConfidence ?? opinion.leanConfidence;
+
+  researchLeanHeadline.textContent = formatLeanLabel(displayLean);
+  researchLeanHeadline.className = `verdict-state ${LEAN_CLASS[displayLean] ?? ""}`;
+  researchLeanConfidence.textContent =
+    displayConfidence != null ? `Confidence ${formatPct(displayConfidence)}` : "Confidence -";
+  researchResolutionStatus.textContent =
+    opinion.resolutionStatus != null
+      ? `Resolution: ${titleCaseWords(opinion.resolutionStatus)} (${formatPct(opinion.resolutionConfidence)})`
+      : "-";
+  setLeanMeter(displayLean);
+
+  researchSystemLean.textContent = researchView
+    ? formatLeanWithConfidence(researchView.lean, researchView.confidenceLabel)
+    : formatLeanLabel(opinion.lean);
+  researchSystemOdds.textContent = researchView
+    ? formatProbabilityPair(researchView.systemYesProbability, researchView.systemNoProbability)
+    : "-";
+  researchMarketOdds.textContent = formatProbabilityPair(marketOdds.yesProbability, marketOdds.noProbability);
+  researchEdge.textContent = formatEdgeView(researchView);
+  researchViewRationale.textContent = researchView?.rationale ?? "-";
+  researchWhy.textContent = opinion.why ?? displayPayload.narrative?.summary ?? "-";
+
+  renderGuardrails(displayPayload);
+  renderResolutionContract(displayPayload);
+  renderForecast(displayPayload, researchView);
+  renderAdversarialReview(displayPayload);
+
+  researchYesHeadline.textContent = opinion.yesCase?.headline ?? "Yes Case";
+  researchNoHeadline.textContent = opinion.noCase?.headline ?? "No Case";
+  renderCaseList(researchYesCase, opinion.yesCase, "yes");
+  renderCaseList(researchNoCase, opinion.noCase, "no");
+
+  renderHistoricalContext(opinion.historicalContext);
+  renderWhatToWatch(displayPayload.narrative?.watchItems ?? opinion.whatToWatch);
+  renderModelTakes(opinion);
+  renderBestSources(displayPayload);
+  renderCrossMarketContext(displayPayload);
+  renderCitations(displayPayload.citations);
+  researchOfficialSources.textContent = getTopSources(evidencePayload).length
+    ? `${getTopSources(evidencePayload).length} ranked sources`
+    : `${displayPayload.citations?.length ?? 0} cited sources`;
+  renderTrustedSources(evidencePayload);
+
+  researchNextCheck.textContent = displayPayload.narrative?.nextCheckAt ?? opinion.nextCheckAt
+    ? `Next recheck: ${formatUtcDateTime(displayPayload.narrative?.nextCheckAt ?? opinion.nextCheckAt)}`
+    : "No scheduled recheck.";
+
+  renderResearchNote(evidencePayload);
+  applyInternalDetails(debugPayload);
+
   if (guardrails?.actionability === "abstain") {
     researchBadge.textContent = "ABSTAIN";
     researchBadge.className = "badge error";
@@ -951,12 +1094,7 @@ async function loadActiveTabContext() {
   }
 
   try {
-    const response = await fetch(`${API_BASE}/v1/markets/slug/${encodeURIComponent(slug)}/context`);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const payload = await response.json();
+    const payload = await fetchMarketContext(slug);
     conditionId.textContent = payload.canonicalMarket.marketId;
     marketCategory.textContent = payload.canonicalMarket.category;
     marketArchetype.textContent = payload.canonicalMarket.resolutionArchetype;
@@ -997,20 +1135,19 @@ async function runResearch() {
   researchBadge.className = "badge muted";
 
   try {
-    const params = new URLSearchParams({
-      bypassCache: "true"
+    const productPromise = fetchResearchProduct(currentSlug, {
+      bypassCache: true
     });
-    const response = await fetch(
-      `${API_BASE}/v1/research/slug/${encodeURIComponent(currentSlug)}/latest?${params.toString()}`
-    );
+    const debugPromise = fetchResearchLatest(currentSlug, {
+      bypassCache: true
+    }).catch(() => null);
 
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload.error ?? `HTTP ${response.status}`);
+    const [productPayload, debugPayload] = await Promise.all([productPromise, debugPromise]);
+    applyResearch(productPayload, debugPayload);
+
+    if (debugPayload?.appliedPolicy?.pack?.id) {
+      marketPolicyPack.textContent = debugPayload.appliedPolicy.pack.id;
     }
-
-    applyResearch(payload);
-    marketPolicyPack.textContent = payload.appliedPolicy?.pack?.id ?? "-";
   } catch (error) {
     researchBadge.textContent = "ERROR";
     researchBadge.className = "badge error";
