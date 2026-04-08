@@ -79,8 +79,8 @@ flowchart LR
 flowchart LR
     RUN[Full research run artifact]
     PROJECT[Projection layer]
-    PRODUCT[/product endpoints]
-    LATEST[/latest endpoints]
+    PRODUCT["/product endpoints"]
+    LATEST["/latest endpoints"]
     UI[Extension UI]
     DEBUG[Replay, debug, eval]
 
