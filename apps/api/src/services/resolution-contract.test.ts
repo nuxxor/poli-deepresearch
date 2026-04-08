@@ -74,3 +74,18 @@ test("buildResolutionContract extracts threshold semantics for numeric markets",
   assert.ok(contract.authorityKinds.includes("economic_release"));
   assert.match(contract.metricName ?? "", /CPI/i);
 });
+
+test("buildResolutionContract parses shorthand numeric thresholds like 100k", () => {
+  const market = makeMarketContext({
+    title: "Will Bitcoin hit 100k by July 1, 2026?",
+    category: "crypto",
+    resolutionArchetype: "numeric_threshold",
+    rulesText: "Resolves YES if BTC trades at or above 100k before the deadline."
+  });
+
+  const contract = buildResolutionContract(market, resolveAppliedPolicy(market));
+
+  assert.equal(contract.comparator, "greater_than_or_equal");
+  assert.equal(contract.thresholdValue, 100_000);
+  assert.equal(contract.thresholdUnit, undefined);
+});

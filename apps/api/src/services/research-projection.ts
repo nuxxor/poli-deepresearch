@@ -68,6 +68,8 @@ export function buildResearchProductResponse(response: MarketResearchResponse): 
 export function buildResearchGuardrails(response: MarketResearchResponse): ResearchGuardrails {
   const reasons = new Set<string>();
   const runMode = inferRunMode(response);
+  const resolutionContract =
+    response.resolutionContract ?? buildResolutionContract(response.market, response.appliedPolicy);
   const decisiveEvidenceStatus =
     response.decisiveEvidenceStatus ??
     deriveDecisiveEvidenceStatus({
@@ -76,7 +78,8 @@ export function buildResearchGuardrails(response: MarketResearchResponse): Resea
       evidence: response.evidence,
       claims: response.forecastClaims ?? response.claims,
       sourceSummary: response.sourceSummary,
-      citationsCount: response.citations.length
+      citationsCount: response.citations.length,
+      resolutionContract
     });
 
   if (runMode === "local_only") {

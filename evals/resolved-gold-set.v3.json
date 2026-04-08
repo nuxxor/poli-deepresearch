@@ -1,0 +1,316 @@
+{
+  "id": "resolved-gold-set",
+  "version": "v3",
+  "description": "Broader historical YES/NO gold set for regression testing resolved Polymarket markets across politics, business, crypto, macro, technology, entertainment, sports, world, and legal outcomes.",
+  "generatedAt": "2026-04-08T00:00:00.000Z",
+  "cases": [
+    {
+      "slug": "will-joe-biden-get-coronavirus-before-the-election",
+      "expectedState": "NO",
+      "category": "politics",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "Joe Biden did not publicly announce a positive COVID-19 test before the 2020 U.S. election."
+    },
+    {
+      "slug": "will-airbnb-begin-publicly-trading-before-jan-1-2021",
+      "expectedState": "YES",
+      "category": "business",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "Airbnb began public trading on Nasdaq on December 10, 2020."
+    },
+    {
+      "slug": "will-a-new-supreme-court-justice-be-confirmed-before-nov-3rd-2020",
+      "expectedState": "YES",
+      "category": "politics",
+      "resolutionArchetype": "appointment_or_resignation",
+      "notes": "Amy Coney Barrett was confirmed on October 26, 2020."
+    },
+    {
+      "slug": "will-kim-kardashian-and-kanye-west-divorce-before-jan-1-2021",
+      "expectedState": "NO",
+      "category": "entertainment",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "Kim Kardashian filed for divorce in February 2021, after the market deadline."
+    },
+    {
+      "slug": "will-coinbase-begin-publicly-trading-before-jan-1-2021",
+      "expectedState": "NO",
+      "category": "business",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "Coinbase began public trading in April 2021, after the market deadline."
+    },
+    {
+      "slug": "will-there-be-an-emergency-use-authorization-granted-for-a-covid-19-vaccine-prior-to-nov-3",
+      "expectedState": "NO",
+      "category": "legal",
+      "resolutionArchetype": "regulatory_approval",
+      "notes": "No COVID-19 vaccine EUA was granted before November 3, 2020."
+    },
+    {
+      "slug": "will-drake-release-a-new-studio-album-before-the-end-of-2020",
+      "expectedState": "NO",
+      "category": "entertainment",
+      "resolutionArchetype": "release_or_launch",
+      "notes": "Drake did not release a new studio album before the end of 2020."
+    },
+    {
+      "slug": "will-there-be-a-federal-charge-filed-against-hunter-biden-before-2021",
+      "expectedState": "NO",
+      "category": "legal",
+      "resolutionArchetype": "legal_outcome",
+      "notes": "No federal charge was filed against Hunter Biden before 2021."
+    },
+    {
+      "slug": "will-btc-break-15k-before-2021-1",
+      "expectedState": "YES",
+      "category": "crypto",
+      "resolutionArchetype": "numeric_threshold",
+      "notes": "Bitcoin traded above $15,000 in November 2020."
+    },
+    {
+      "slug": "will-khabib-win-his-ufc-254-fight",
+      "expectedState": "YES",
+      "category": "sports",
+      "resolutionArchetype": "winner_of_event",
+      "notes": "Khabib Nurmagomedov defeated Justin Gaethje at UFC 254."
+    },
+    {
+      "slug": "will-trump-get-more-votes-than-2020",
+      "expectedState": "YES",
+      "category": "politics",
+      "resolutionArchetype": "numeric_threshold",
+      "notes": "Donald Trump received more total votes in the 2024 election than he received in 2020."
+    },
+    {
+      "slug": "republicans-flip-a-2020-biden-state",
+      "expectedState": "YES",
+      "category": "politics",
+      "resolutionArchetype": "winner_of_event",
+      "notes": "Republicans flipped at least one 2020 Biden state in the 2024 presidential election."
+    },
+    {
+      "slug": "will-trump-win-florida-by-8-points",
+      "expectedState": "YES",
+      "category": "politics",
+      "resolutionArchetype": "numeric_threshold",
+      "notes": "Trump won Florida by more than 8 percentage points in 2024."
+    },
+    {
+      "slug": "will-biden-win-georgia-democratic-primary",
+      "expectedState": "YES",
+      "category": "politics",
+      "resolutionArchetype": "winner_of_event",
+      "notes": "Joe Biden won the Georgia Democratic primary on March 12, 2024."
+    },
+    {
+      "slug": "ethereum-etf-begins-trading-by-july-4",
+      "expectedState": "NO",
+      "category": "crypto",
+      "resolutionArchetype": "release_or_launch",
+      "notes": "Spot Ethereum ETFs began trading on July 23, 2024, after the July 4 deadline."
+    },
+    {
+      "slug": "will-bitcoin-hit-100k-by-tomorrow-1-7-25",
+      "expectedState": "YES",
+      "category": "crypto",
+      "resolutionArchetype": "numeric_threshold",
+      "notes": "Bitcoin traded above $100,000 before January 7, 2025."
+    },
+    {
+      "slug": "diddy-released-by-july-4",
+      "expectedState": "NO",
+      "category": "legal",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "Sean Combs was not released by July 4, 2025."
+    },
+    {
+      "slug": "will-taylor-swift-release-a-new-original-song-by-august-31",
+      "expectedState": "NO",
+      "category": "entertainment",
+      "resolutionArchetype": "release_or_launch",
+      "notes": "Taylor Swift did not release a new original song by August 31, 2025."
+    },
+    {
+      "slug": "will-taylor-swift-and-travis-kelce-breakup-before-march",
+      "expectedState": "NO",
+      "category": "entertainment",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "Taylor Swift and Travis Kelce did not break up before March 1, 2025."
+    },
+    {
+      "slug": "will-taylor-swift-endorse-biden-at-the-super-bowl",
+      "expectedState": "NO",
+      "category": "politics",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "Taylor Swift did not endorse Joe Biden during the Super Bowl in February 2024."
+    },
+    {
+      "slug": "will-trump-win-the-2020-us-presidential-election",
+      "expectedState": "NO",
+      "category": "politics",
+      "resolutionArchetype": "winner_of_event",
+      "notes": "Joe Biden won the 2020 U.S. presidential election."
+    },
+    {
+      "slug": "will-the-ethereum-20-genesis-event-happen-successfully-on-december-1st-2020",
+      "expectedState": "YES",
+      "category": "crypto",
+      "resolutionArchetype": "release_or_launch",
+      "notes": "Ethereum 2.0 genesis launched successfully on December 1, 2020."
+    },
+    {
+      "slug": "will-btc-break-20k-before-2021",
+      "expectedState": "YES",
+      "category": "crypto",
+      "resolutionArchetype": "numeric_threshold",
+      "notes": "Bitcoin traded above $20,000 in December 2020."
+    },
+    {
+      "slug": "will-donald-trump-formally-concede-the-2020-us-election-before-december-1st-2020",
+      "expectedState": "NO",
+      "category": "politics",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "Donald Trump did not formally concede the 2020 election before December 1, 2020."
+    },
+    {
+      "slug": "will-lamelo-ball-be-the-first-pick-in-the-2020-nba-draft",
+      "expectedState": "NO",
+      "category": "sports",
+      "resolutionArchetype": "winner_of_event",
+      "notes": "Anthony Edwards, not LaMelo Ball, was the first pick in the 2020 NBA draft."
+    },
+    {
+      "slug": "will-kanye-west-release-a-new-studio-album-before-2021",
+      "expectedState": "NO",
+      "category": "entertainment",
+      "resolutionArchetype": "release_or_launch",
+      "notes": "Kanye West did not release a new studio album before the end of 2020."
+    },
+    {
+      "slug": "will-donald-trump-attend-joe-biden-s-inauguration-ceremony-in-person",
+      "expectedState": "NO",
+      "category": "politics",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "Donald Trump did not attend Joe Biden's inauguration in person."
+    },
+    {
+      "slug": "will-uniswap-v3-launch-before-2021",
+      "expectedState": "NO",
+      "category": "crypto",
+      "resolutionArchetype": "release_or_launch",
+      "notes": "Uniswap v3 launched in May 2021, after the 2020 deadline."
+    },
+    {
+      "slug": "will-indoor-dining-be-prohibited-in-nyc-at-any-point-before-2021",
+      "expectedState": "YES",
+      "category": "world",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "New York City halted indoor dining in December 2020 before the market deadline."
+    },
+    {
+      "slug": "will-pfizer-s-covid-19-vaccine-be-the-first-to-receive-fda-approval-or-emergency-use-authorization-eua",
+      "expectedState": "YES",
+      "category": "legal",
+      "resolutionArchetype": "regulatory_approval",
+      "notes": "Pfizer-BioNTech received the first FDA COVID-19 vaccine emergency use authorization in the U.S."
+    },
+    {
+      "slug": "will-figueiredo-win-his-ufc-255-match",
+      "expectedState": "YES",
+      "category": "sports",
+      "resolutionArchetype": "winner_of_event",
+      "notes": "Deiveson Figueiredo defeated Alex Perez at UFC 255."
+    },
+    {
+      "slug": "will-jake-paul-win-his-boxing-match-against-nate-robinson",
+      "expectedState": "YES",
+      "category": "sports",
+      "resolutionArchetype": "winner_of_event",
+      "notes": "Jake Paul defeated Nate Robinson on November 28, 2020."
+    },
+    {
+      "slug": "will-donald-trump-pardon-julian-assange",
+      "expectedState": "NO",
+      "category": "politics",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "Donald Trump did not pardon Julian Assange before leaving office."
+    },
+    {
+      "slug": "will-playboi-carti-release-a-new-album-before-2021",
+      "expectedState": "YES",
+      "category": "entertainment",
+      "resolutionArchetype": "release_or_launch",
+      "notes": "Playboi Carti released Whole Lotta Red on December 25, 2020."
+    },
+    {
+      "slug": "will-btc-break-25k-before-march-1st",
+      "expectedState": "YES",
+      "category": "crypto",
+      "resolutionArchetype": "numeric_threshold",
+      "notes": "Bitcoin traded above $25,000 in late December 2020."
+    },
+    {
+      "slug": "will-tesla-announce-a-bitcoin-purchase-before-march-1-2021",
+      "expectedState": "YES",
+      "category": "business",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "Tesla disclosed its Bitcoin purchase in a February 8, 2021 SEC filing."
+    },
+    {
+      "slug": "will-100-million-people-have-received-a-dose-of-an-approved-covid-19-vaccine-in-the-us-by-april-1-2021",
+      "expectedState": "NO",
+      "category": "macro",
+      "resolutionArchetype": "numeric_threshold",
+      "notes": "The U.S. did not reach 100 million people with at least one vaccine dose by April 1, 2021."
+    },
+    {
+      "slug": "will-president-trump-be-suspended-from-twitter-before-april-1-2021",
+      "expectedState": "YES",
+      "category": "technology",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "Twitter permanently suspended Donald Trump on January 8, 2021."
+    },
+    {
+      "slug": "will-joe-biden-be-inaugurated-as-president-of-the-usa-on-january-20th-2021-1",
+      "expectedState": "YES",
+      "category": "politics",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "Joe Biden was inaugurated as U.S. president on January 20, 2021."
+    },
+    {
+      "slug": "will-conor-mcgregor-win-his-ufc-257-match-on-january-23",
+      "expectedState": "NO",
+      "category": "sports",
+      "resolutionArchetype": "winner_of_event",
+      "notes": "Dustin Poirier defeated Conor McGregor at UFC 257."
+    },
+    {
+      "slug": "will-novak-djokovic-win-the-australian-open-1",
+      "expectedState": "YES",
+      "category": "sports",
+      "resolutionArchetype": "winner_of_event",
+      "notes": "Novak Djokovic won the 2021 Australian Open men's singles title."
+    },
+    {
+      "slug": "will-johnson-and-johnson-s-covid-19-vaccine-receive-fda-approval-or-emergency-use-authorization-eua-by-march-15-2021",
+      "expectedState": "YES",
+      "category": "legal",
+      "resolutionArchetype": "regulatory_approval",
+      "notes": "Johnson & Johnson's COVID-19 vaccine received FDA emergency use authorization on February 27, 2021."
+    },
+    {
+      "slug": "will-apple-amazon-or-twitter-announce-a-bitcoin-purchase-before-april-1-2021",
+      "expectedState": "NO",
+      "category": "business",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "Apple, Amazon, and Twitter did not announce Bitcoin purchases before April 1, 2021."
+    },
+    {
+      "slug": "will-clubhouse-officially-announce-theyve-been-acquired-before-june-1st-2021",
+      "expectedState": "NO",
+      "category": "business",
+      "resolutionArchetype": "official_announcement_by_deadline",
+      "notes": "Clubhouse did not officially announce an acquisition before June 1, 2021."
+    }
+  ]
+}

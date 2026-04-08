@@ -5,13 +5,47 @@ import {
   type MarketContext,
   type Opinion,
   type ProviderResearchJudgment,
+  type ResolutionComparator,
+  type ResolutionContract,
   type SourceSummary
 } from "@polymarket/deep-research-contracts";
+
+const TOKEN_STOPWORDS = new Set([
+  "the",
+  "and",
+  "for",
+  "with",
+  "from",
+  "that",
+  "this",
+  "will",
+  "would",
+  "before",
+  "after",
+  "about",
+  "into",
+  "their",
+  "there",
+  "have",
+  "has",
+  "been",
+  "being",
+  "official",
+  "reported",
+  "market",
+  "according",
+  "requires",
+  "require",
+  "under",
+  "said",
+  "says"
+]);
 
 type OfficialClaimSignal = {
   hasOfficialEvidence: boolean;
   hasDirectOfficialCheck: boolean;
   anyOfficialClaim: boolean;
+  hasContractAlignedOfficialClaim: boolean;
   supportsYesWeight: number;
   supportsNoWeight: number;
   contradictory: boolean;
@@ -24,6 +58,7 @@ type DeriveDecisiveEvidenceStatusInput = {
   claims?: Claim[];
   sourceSummary?: SourceSummary;
   citationsCount?: number;
+  resolutionContract?: ResolutionContract;
 };
 
 type ReconcileOpinionAgainstEvidenceInput = {
@@ -33,12 +68,18 @@ type ReconcileOpinionAgainstEvidenceInput = {
   evidence: EvidenceDoc[];
   claims?: Claim[];
   sourceSummary?: SourceSummary;
+  resolutionContract?: ResolutionContract;
 };
 
 export function deriveDecisiveEvidenceStatus(
   input: DeriveDecisiveEvidenceStatusInput
 ): DecisiveEvidenceStatus {
-  const officialSignal = summarizeOfficialClaimSignal(input.claims, input.evidence, input.directRun);
+  const officialSignal = summarizeOfficialClaimSignal(
+    input.claims,
+    input.evidence,
+    input.directRun,
+    input.resolutionContract
+  );
   const hasOfficialSource = (input.sourceSummary?.officialSourcePresent ?? false) || officialSignal.hasOfficialEvidence;
   const directStatus = input.directRun?.parseMode === "direct" ? input.directRun.resolutionStatus : undefined;
 
@@ -59,15 +100,17 @@ export function deriveDecisiveEvidenceStatus(
 
   if (
     input.final?.resolutionStatus === "RESOLVED_YES" &&
-    officialSignal.supportsYesWeight >= 0.75 &&
-    officialSignal.supportsNoWeight === 0
+    officialSignal.hasContractAlignedOfficialClaim &&
+    officialSignal.supportsYesWeight >= 0.65 &&
+    officialSignal.supportsNoWeight <= 0.18
   ) {
     return "decisive_yes";
   }
   if (
     input.final?.resolutionStatus === "RESOLVED_NO" &&
-    officialSignal.supportsNoWeight >= 0.75 &&
-    officialSignal.supportsYesWeight === 0
+    officialSignal.hasContractAlignedOfficialClaim &&
+    officialSignal.supportsNoWeight >= 0.65 &&
+    officialSignal.supportsYesWeight <= 0.18
   ) {
     return "decisive_no";
   }
@@ -92,9 +135,15 @@ export function reconcileOpinionAgainstEvidence(
     directRun: input.directRun,
     evidence: input.evidence,
     claims: input.claims,
-    sourceSummary: input.sourceSummary
+    sourceSummary: input.sourceSummary,
+    resolutionContract: input.resolutionContract
   });
-  const signal = summarizeOfficialClaimSignal(input.claims, input.evidence, input.directRun);
+  const signal = summarizeOfficialClaimSignal(
+    input.claims,
+    input.evidence,
+    input.directRun,
+    input.resolutionContract
+  );
 
   let opinion = input.opinion;
 
@@ -132,13 +181,15 @@ export function reconcileOpinionAgainstEvidence(
 function summarizeOfficialClaimSignal(
   claims: Claim[] | undefined,
   evidence: EvidenceDoc[],
-  directRun?: ProviderResearchJudgment
+  directRun?: ProviderResearchJudgment,
+  resolutionContract?: ResolutionContract
 ): OfficialClaimSignal {
   const evidenceById = new Map(evidence.map((doc) => [doc.docId, doc]));
   let supportsYesWeight = 0;
   let supportsNoWeight = 0;
   let contradictory = false;
   let anyOfficialClaim = false;
+  let hasContractAlignedOfficialClaim = false;
 
   for (const claim of claims ?? []) {
     const doc = evidenceById.get(claim.docId);
@@ -148,12 +199,22 @@ function summarizeOfficialClaimSignal(
     }
 
     anyOfficialClaim = true;
-    const weight = clamp01(
-      claim.confidence * (doc ? doc.authorityScore * 0.6 + doc.directnessScore * 0.4 : 0.75)
-    );
+    const docAlignment = scoreDocumentAlignmentToResolutionContract(doc, resolutionContract);
+    const claimAlignment = scoreClaimAlignmentToResolutionContract(claim, doc, resolutionContract);
+    const alignmentWeight = resolutionContract ? Math.max(docAlignment, claimAlignment) : 1;
+
+    if (alignmentWeight >= 0.55) {
+      hasContractAlignedOfficialClaim = true;
+    }
+    if (alignmentWeight < 0.24) {
+      continue;
+    }
+
+    const sourceWeight = doc ? doc.authorityScore * 0.6 + doc.directnessScore * 0.4 : 0.75;
+    const weight = clamp01(claim.confidence * sourceWeight * Math.max(0.2, alignmentWeight));
 
     if (claim.polarity === "contradictory") {
-      contradictory = true;
+      contradictory = contradictory || alignmentWeight >= 0.4;
       continue;
     }
     if (claim.polarity === "supports_yes") {
@@ -166,13 +227,238 @@ function summarizeOfficialClaimSignal(
   }
 
   return {
-    hasOfficialEvidence: evidence.some((doc) => doc.sourceType === "official"),
+    hasOfficialEvidence: evidence.some(
+      (doc) => doc.sourceType === "official" && scoreDocumentAlignmentToResolutionContract(doc, resolutionContract) >= 0.38
+    ),
     hasDirectOfficialCheck: directRun?.parseMode === "direct",
     anyOfficialClaim,
+    hasContractAlignedOfficialClaim,
     supportsYesWeight: round3(clamp01(supportsYesWeight)),
     supportsNoWeight: round3(clamp01(supportsNoWeight)),
     contradictory
   };
+}
+
+function scoreClaimAlignmentToResolutionContract(
+  claim: Claim,
+  doc: EvidenceDoc | undefined,
+  resolutionContract?: ResolutionContract
+): number {
+  if (!resolutionContract) {
+    return 1;
+  }
+
+  const text = normalizeText([
+    claim.subject,
+    claim.predicate,
+    claim.object,
+    doc?.title,
+    clipEvidenceText(doc?.contentMarkdown)
+  ]);
+
+  let score = 0.1;
+  const thresholdScore = thresholdAlignmentScore(text, resolutionContract, 0.18);
+  if (claim.claimType === resolutionContract.resolutionArchetype) {
+    score += 0.14;
+  }
+  score += tokenMatchScore(text, resolutionContract.subject, 0.24);
+  score += tokenMatchScore(text, resolutionContract.eventLabel, 0.14);
+  score += tokenMatchScore(text, resolutionContract.metricName, 0.1);
+  score += comparatorCueScore(text, resolutionContract, 0.12);
+  score += thresholdScore;
+  score += decisiveRuleScore(
+    text,
+    claim.polarity === "supports_no" ? resolutionContract.decisiveNoRule : resolutionContract.decisiveYesRule,
+    0.1
+  );
+  if (claim.origin === "heuristic_official" || doc?.sourceType === "official") {
+    score += 0.08;
+  }
+  if (
+    resolutionContract.resolutionArchetype === "numeric_threshold" &&
+    resolutionContract.thresholdValue != null &&
+    thresholdScore === 0
+  ) {
+    score = Math.min(score, 0.44);
+  }
+
+  return clamp01(score);
+}
+
+function scoreDocumentAlignmentToResolutionContract(
+  doc: EvidenceDoc | undefined,
+  resolutionContract?: ResolutionContract
+): number {
+  if (!doc) {
+    return 0;
+  }
+  if (!resolutionContract) {
+    return doc.sourceType === "official" ? 1 : 0.5;
+  }
+
+  const text = normalizeText([doc.title, clipEvidenceText(doc.contentMarkdown), doc.canonicalUrl]);
+  const thresholdScore = thresholdAlignmentScore(text, resolutionContract, 0.16);
+  let score = doc.sourceType === "official" ? 0.12 : 0.04;
+  score += tokenMatchScore(text, resolutionContract.subject, 0.3);
+  score += tokenMatchScore(text, resolutionContract.eventLabel, 0.18);
+  score += tokenMatchScore(text, resolutionContract.metricName, 0.1);
+  score += comparatorCueScore(text, resolutionContract, 0.14);
+  score += thresholdScore;
+  score += Math.max(
+    decisiveRuleScore(text, resolutionContract.decisiveYesRule, 0.05),
+    decisiveRuleScore(text, resolutionContract.decisiveNoRule, 0.05)
+  );
+  if (
+    resolutionContract.resolutionArchetype === "numeric_threshold" &&
+    resolutionContract.thresholdValue != null &&
+    thresholdScore === 0
+  ) {
+    score = Math.min(score, 0.36);
+  }
+
+  return clamp01(score);
+}
+
+function comparatorCueScore(text: string, resolutionContract: ResolutionContract, weight: number): number {
+  const patterns = comparatorCuePatterns(resolutionContract.comparator);
+  if (patterns.length === 0) {
+    return 0;
+  }
+  return patterns.some((pattern) => pattern.test(text)) ? weight : 0;
+}
+
+function thresholdAlignmentScore(text: string, resolutionContract: ResolutionContract, weight: number): number {
+  if (resolutionContract.thresholdValue == null) {
+    return 0;
+  }
+
+  const values = extractNumericValues(text);
+  if (values.some((value) => compareNumericToThreshold(value, resolutionContract.comparator, resolutionContract.thresholdValue!))) {
+    return weight;
+  }
+
+  return 0;
+}
+
+function decisiveRuleScore(text: string, rule: string | undefined, weight: number): number {
+  return tokenMatchScore(text, rule, weight);
+}
+
+function tokenMatchScore(text: string, phrase: string | undefined, weight: number): number {
+  if (!phrase) {
+    return 0;
+  }
+  return tokenMatchRatio(text, phrase) * weight;
+}
+
+function tokenMatchRatio(text: string, phrase: string): number {
+  const tokens = tokenizeMeaningful(phrase);
+  if (tokens.length === 0) {
+    return 0;
+  }
+
+  const haystack = new Set(tokenizeMeaningful(text));
+  let hits = 0;
+  for (const token of tokens) {
+    if (haystack.has(token)) {
+      hits += 1;
+    }
+  }
+
+  return hits / tokens.length;
+}
+
+function tokenizeMeaningful(value: string): string[] {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9%]+/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3 && !TOKEN_STOPWORDS.has(token));
+}
+
+function extractNumericValues(text: string): number[] {
+  const values: number[] = [];
+  const regex = /(-?\d[\d,]*(?:\.\d+)?)\s*([kmb])?\b/gi;
+
+  for (const match of text.matchAll(regex)) {
+    const rawValue = match[1]?.replaceAll(",", "");
+    if (!rawValue) {
+      continue;
+    }
+    const parsed = Number.parseFloat(rawValue);
+    if (!Number.isFinite(parsed)) {
+      continue;
+    }
+    const suffix = match[2]?.toLowerCase();
+    const multiplier = suffix === "k" ? 1_000 : suffix === "m" ? 1_000_000 : suffix === "b" ? 1_000_000_000 : 1;
+    values.push(parsed * multiplier);
+  }
+
+  return values;
+}
+
+function compareNumericToThreshold(
+  value: number,
+  comparator: ResolutionComparator,
+  threshold: number
+): boolean {
+  const epsilon = Math.max(0.001, Math.abs(threshold) * 0.001);
+
+  switch (comparator) {
+    case "greater_than":
+      return value > threshold;
+    case "greater_than_or_equal":
+      return value >= threshold - epsilon;
+    case "less_than":
+      return value < threshold;
+    case "less_than_or_equal":
+      return value <= threshold + epsilon;
+    case "equal_to":
+      return Math.abs(value - threshold) <= epsilon;
+    default:
+      return Math.abs(value - threshold) <= epsilon;
+  }
+}
+
+function comparatorCuePatterns(comparator: ResolutionComparator): RegExp[] {
+  switch (comparator) {
+    case "greater_than":
+      return [/\babove\b/, /\bover\b/, /\bgreater than\b/, /\bexceed(?:ed|s)?\b/, /\bbroke\b/];
+    case "greater_than_or_equal":
+      return [/\bat least\b/, /\b>=\b/, /\bhit\b/, /\breach(?:ed|es)?\b/, /\btouch(?:ed|es)?\b/];
+    case "less_than":
+      return [/\bbelow\b/, /\bunder\b/, /\bless than\b/, /\bmiss(?:ed|es)?\b/];
+    case "less_than_or_equal":
+      return [/\bat most\b/, /\b<=\b/, /\bno more than\b/];
+    case "winner":
+      return [/\bwon\b/, /\bwinner\b/, /\bdefeat(?:ed|s)?\b/, /\bchampion\b/, /\bclinched\b/];
+    case "official_confirmation":
+    case "occurs":
+      return [/\bannounced\b/, /\bconfirmed\b/, /\breleased\b/, /\blaunched\b/, /\blisted\b/, /\bapproved\b/];
+    case "not_occurs":
+      return [/\bwill not\b/, /\bwon'?t\b/, /\bnot\b/, /\bcancelled\b/, /\bdelayed\b/, /\bterminated\b/];
+    case "legal_outcome":
+      return [/\bcharged\b/, /\bindicted\b/, /\bconvicted\b/, /\bacquitted\b/, /\bdismissed\b/];
+    case "appointment_change":
+      return [/\bappointed\b/, /\bconfirmed\b/, /\bresigned\b/, /\bstepped down\b/, /\bremoved\b/];
+    case "equal_to":
+      return [/\bexactly\b/, /\bequal to\b/];
+    case "unknown":
+    default:
+      return [];
+  }
+}
+
+function clipEvidenceText(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  return value.slice(0, 1_200);
+}
+
+function normalizeText(parts: Array<string | undefined>): string {
+  return parts.filter(Boolean).join("\n").toLowerCase();
 }
 
 function softenOpinion(opinion: Opinion, confidenceCap: number, note: string): Opinion {

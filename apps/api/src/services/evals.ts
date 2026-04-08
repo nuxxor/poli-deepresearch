@@ -16,7 +16,7 @@ import { runMarketResearchBySlug } from "./research.js";
 
 const SERVICE_DIR = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(SERVICE_DIR, "../../../..");
-const DEFAULT_DATASET_PATH = resolve(PROJECT_ROOT, "evals", "resolved-gold-set.v2.json");
+const DEFAULT_DATASET_PATH = resolve(PROJECT_ROOT, "evals", "resolved-gold-set.v3.json");
 const REPORTS_DIR = resolve(PROJECT_ROOT, "evals", "reports");
 
 export type RunResolvedGoldEvalOptions = {

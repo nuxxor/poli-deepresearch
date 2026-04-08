@@ -96,6 +96,9 @@ function inferComparator(archetype: string, input: string): ResolutionComparator
     if (/\b(at least|greater than or equal|>=|no less than)\b/.test(text)) {
       return "greater_than_or_equal";
     }
+    if (/\b(hit|hits|reach|reaches|break|breaks|touch|touches)\b/.test(text)) {
+      return "greater_than_or_equal";
+    }
     if (/\b(over|above|greater than|exceed|exceeds|more than|>)\b/.test(text)) {
       return "greater_than";
     }
@@ -135,7 +138,7 @@ function inferThreshold(input: string): {
 } {
   const compact = input.replace(/\s+/g, " ").trim();
   const match = compact.match(
-    /\b(-?\d+(?:\.\d+)?)\s*(%|percent|bps|basis points?|points?|point|usd|dollars?)\b/i
+    /\b(-?\d+(?:\.\d+)?)\s*(k|m|b|%|percent|bps|basis points?|points?|point|usd|dollars?)\b/i
   );
 
   if (!match) {
@@ -143,7 +146,15 @@ function inferThreshold(input: string): {
   }
 
   const [, rawValue = "", rawUnitValue = ""] = match;
-  const thresholdValue = Number.parseFloat(rawValue);
+  const magnitudeMultiplier =
+    rawUnitValue.toLowerCase() === "k"
+      ? 1_000
+      : rawUnitValue.toLowerCase() === "m"
+        ? 1_000_000
+        : rawUnitValue.toLowerCase() === "b"
+          ? 1_000_000_000
+          : 1;
+  const thresholdValue = Number.parseFloat(rawValue) * magnitudeMultiplier;
   if (!Number.isFinite(thresholdValue)) {
     return {};
   }
@@ -156,7 +167,9 @@ function inferThreshold(input: string): {
         ? "bps"
         : /^dollars?$/i.test(rawUnit)
           ? "USD"
-          : rawUnit;
+          : /^(k|m|b)$/i.test(rawUnit)
+            ? undefined
+            : rawUnit;
 
   const before = compact.slice(0, match.index).replace(/^will\s+/i, "").trim();
   const metricName = before
