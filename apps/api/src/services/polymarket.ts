@@ -263,17 +263,30 @@ async function fetchGammaMarkets(params: Record<string, string>): Promise<Polyma
   throw lastError instanceof Error ? lastError : new Error("Gamma market lookup failed");
 }
 
-export async function fetchMarketContextBySlug(slug: string): Promise<MarketContext> {
-  const markets = await fetchGammaMarkets({
-    slug,
-    limit: "1"
-  });
-
-  if (markets.length === 0) {
-    throw new Error(`No market found for slug "${slug}"`);
+export function buildMarketLookupAttempts(params: Record<string, string>): Array<Record<string, string>> {
+  if (params.closed === "true") {
+    return [{ ...params }];
   }
 
-  const rawMarket = markets[0]!;
+  return [{ ...params }, { ...params, closed: "true" }];
+}
+
+async function fetchFirstMarket(params: Record<string, string>, notFoundMessage: string): Promise<PolymarketMarket> {
+  for (const attempt of buildMarketLookupAttempts(params)) {
+    const markets = await fetchGammaMarkets(attempt);
+    if (markets.length > 0) {
+      return markets[0]!;
+    }
+  }
+
+  throw new Error(notFoundMessage);
+}
+
+export async function fetchMarketContextBySlug(slug: string): Promise<MarketContext> {
+  const rawMarket = await fetchFirstMarket({
+    slug,
+    limit: "1"
+  }, `No market found for slug "${slug}"`);
   const tokenIds = parseStringArray(rawMarket.clobTokenIds);
   const canonicalMarket = buildCanonicalMarket(rawMarket);
 
@@ -285,16 +298,10 @@ export async function fetchMarketContextBySlug(slug: string): Promise<MarketCont
 }
 
 export async function fetchMarketContextByConditionId(conditionId: string): Promise<MarketContext> {
-  const markets = await fetchGammaMarkets({
+  const rawMarket = await fetchFirstMarket({
     condition_ids: conditionId,
     limit: "1"
-  });
-
-  if (markets.length === 0) {
-    throw new Error(`No market found for condition id "${conditionId}"`);
-  }
-
-  const rawMarket = markets[0]!;
+  }, `No market found for condition id "${conditionId}"`);
   const tokenIds = parseStringArray(rawMarket.clobTokenIds);
   const canonicalMarket = buildCanonicalMarket(rawMarket);
 

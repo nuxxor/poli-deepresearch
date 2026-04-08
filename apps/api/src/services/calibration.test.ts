@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import type { MarketContext, ProbabilisticForecast } from "@polymarket/deep-research-contracts";
 
-import { calibrateForecast, deriveCalibratedYesProbability } from "./calibration.js";
+import { calibrateForecastWithCases, deriveCalibratedYesProbability, type CalibrationCase } from "./calibration.js";
 
 test("deriveCalibratedYesProbability shrinks weak historical buckets toward tossup", () => {
   const base = 0.78;
@@ -13,13 +13,13 @@ test("deriveCalibratedYesProbability shrinks weak historical buckets toward toss
   assert.ok(calibrated > 0.5);
 });
 
-test("calibrateForecast uses archived labeled runs when available", async () => {
+test("calibrateForecastWithCases uses matching labeled runs when available", () => {
   const market: MarketContext = {
     rawMarket: {
       id: "1",
       question: "Will Joe Biden get Coronavirus before the election?",
       conditionId: "cond-1",
-      slug: "test-market",
+      slug: "will-joe-biden-get-coronavirus-before-the-election",
       description: "test",
       outcomes: ["Yes", "No"],
       outcomePrices: ["0.4", "0.6"]
@@ -28,7 +28,7 @@ test("calibrateForecast uses archived labeled runs when available", async () => 
       marketId: "m-1",
       eventId: "e-1",
       title: "Will Joe Biden get Coronavirus before the election?",
-      slug: "test-market",
+      slug: "will-joe-biden-get-coronavirus-before-the-election",
       description: "test",
       rulesText: "Official public statement required.",
       endTimeUtc: new Date("2020-11-04T00:00:00.000Z").toISOString(),
@@ -55,7 +55,34 @@ test("calibrateForecast uses archived labeled runs when available", async () => 
     components: []
   };
 
-  const calibrated = await calibrateForecast(market, forecast);
+  const cases: CalibrationCase[] = [
+    {
+      category: "politics",
+      resolutionArchetype: "official_announcement_by_deadline",
+      correct: true,
+      direction: "NO",
+      confidence: 0.71,
+      source: "archived_run"
+    },
+    {
+      category: "politics",
+      resolutionArchetype: "official_announcement_by_deadline",
+      correct: true,
+      direction: "NO",
+      confidence: 0.64,
+      source: "archived_run"
+    },
+    {
+      category: "business",
+      resolutionArchetype: "release_or_launch",
+      correct: false,
+      direction: "YES",
+      confidence: 0.82,
+      source: "archived_run"
+    }
+  ];
+
+  const calibrated = calibrateForecastWithCases(market, forecast, cases);
 
   assert.equal(calibrated.summary.status, "empirical");
   assert.ok(calibrated.summary.sampleSize >= 2);

@@ -13,9 +13,9 @@ import { PROJECT_ROOT } from "../paths.js";
 import { loadArchivedRunSnapshots, type ArchivedRunSnapshot } from "./archive-runs.js";
 import { applyCalibratedProbability } from "./probabilistic-forecast.js";
 
-const GOLD_DATASET_PATH = resolve(PROJECT_ROOT, "evals", "resolved-gold-set.v1.json");
+const GOLD_DATASET_PATH = resolve(PROJECT_ROOT, "evals", "resolved-gold-set.v2.json");
 
-type CalibrationCase = {
+export type CalibrationCase = {
   category?: string;
   resolutionArchetype?: string;
   correct: boolean;
@@ -29,6 +29,14 @@ export async function calibrateForecast(
   forecast: ProbabilisticForecast
 ): Promise<{ forecast: ProbabilisticForecast; summary: CalibrationSummary }> {
   const cases = await loadCalibrationCases();
+  return calibrateForecastWithCases(market, forecast, cases);
+}
+
+export function calibrateForecastWithCases(
+  market: MarketContext,
+  forecast: ProbabilisticForecast,
+  cases: CalibrationCase[]
+): { forecast: ProbabilisticForecast; summary: CalibrationSummary } {
   const direction = forecast.calibratedYesProbability >= 0.5 ? "YES" : "NO";
   const rawDirectionalConfidence = Math.abs(forecast.calibratedYesProbability - 0.5) * 2;
 

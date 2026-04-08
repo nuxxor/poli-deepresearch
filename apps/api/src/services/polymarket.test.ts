@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { inferCategory } from "./polymarket.js";
+import { buildMarketLookupAttempts, inferCategory } from "./polymarket.js";
 
 test("inferCategory does not misclassify Coinbase listing markets as sports", () => {
   const category = inferCategory(
@@ -31,4 +31,17 @@ test("inferCategory normalizes common fallback aliases", () => {
   );
 
   assert.equal(category, "technology");
+});
+
+test("buildMarketLookupAttempts retries closed markets for historical slug lookups", () => {
+  assert.deepEqual(buildMarketLookupAttempts({ slug: "example-market", limit: "1" }), [
+    { slug: "example-market", limit: "1" },
+    { slug: "example-market", limit: "1", closed: "true" }
+  ]);
+});
+
+test("buildMarketLookupAttempts does not duplicate explicit closed lookups", () => {
+  assert.deepEqual(buildMarketLookupAttempts({ slug: "example-market", limit: "1", closed: "true" }), [
+    { slug: "example-market", limit: "1", closed: "true" }
+  ]);
 });
