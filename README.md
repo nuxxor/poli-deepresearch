@@ -227,6 +227,9 @@ cp .env.example .env
 
 By default the stack is local-first. You can keep paid provider keys empty and run with Ollama only.
 
+The main research path does not require `Serper`, `Brave`, or `Exa`.
+Those adapters remain in the repo only for optional provider benchmarking and experiments.
+
 ### 3. Start the API
 
 ```bash
@@ -328,15 +331,18 @@ Common variables:
 - `OLLAMA_BASE_URL`
 - `OLLAMA_MODEL_PRIMARY`
 - `OLLAMA_MODEL_REASONER`
-- `SERPER_API_KEY`
-- `BRAVE_API_KEY`
-- `EXA_API_KEY`
 - `PARALLEL_API_KEY`
 - `XAI_API_KEY`
 - `TWITTERAPI_KEY`
 - `FRED_API_KEY`
 
 Leave optional provider keys empty if you want a local-only setup.
+
+Benchmark-only adapters can optionally use:
+
+- `SERPER_API_KEY`
+- `BRAVE_API_KEY`
+- `EXA_API_KEY`
 
 ## Notes
 
